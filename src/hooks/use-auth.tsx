@@ -71,9 +71,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           console.error("Error fetching user data:", err);
         }
       } else {
-        setAppUser(null);
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("bm_app_user");
+        const cached = typeof window !== "undefined" ? localStorage.getItem("bm_app_user") : null;
+        let isDemo = false;
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached);
+            if (parsed?.uid?.startsWith("demo-")) {
+              isDemo = true;
+              setAppUser(parsed);
+            }
+          } catch (e) {}
+        }
+        if (!isDemo) {
+          setAppUser(null);
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("bm_app_user");
+          }
         }
       }
       setLoading(false);
@@ -185,8 +198,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signOut = async () => {
-    await firebaseSignOut(auth);
-    setAppUser(null);
+    try {
+      await firebaseSignOut(auth);
+    } catch (e) {}
+    saveUserCache(null);
   };
 
   const createAccount = async (

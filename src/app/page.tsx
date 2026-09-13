@@ -170,10 +170,13 @@ export default function LoginPage() {
                   variant="outline"
                   size="sm"
                   className="text-xs font-medium h-9 border-primary/20 hover:bg-primary/10"
-                  onClick={() => {
+                  onClick={async () => {
                     setEmail("admin@brothermobiles.com");
                     setPassword("admin123");
-                    signIn("admin@brothermobiles.com", "admin123");
+                    setIsLoading(true);
+                    await signIn("admin@brothermobiles.com", "admin123");
+                    router.push("/dashboard");
+                    setIsLoading(false);
                   }}
                 >
                   👑 Admin
@@ -183,10 +186,13 @@ export default function LoginPage() {
                   variant="outline"
                   size="sm"
                   className="text-xs font-medium h-9 border-emerald-500/20 hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  onClick={() => {
+                  onClick={async () => {
                     setEmail("investor@brothermobiles.com");
                     setPassword("investor123");
-                    signIn("investor@brothermobiles.com", "investor123");
+                    setIsLoading(true);
+                    await signIn("investor@brothermobiles.com", "investor123");
+                    router.push("/investor/portal");
+                    setIsLoading(false);
                   }}
                 >
                   💼 Investor
@@ -196,10 +202,13 @@ export default function LoginPage() {
                   variant="outline"
                   size="sm"
                   className="text-xs font-medium h-9 border-blue-500/20 hover:bg-blue-500/10 text-blue-600 dark:text-blue-400"
-                  onClick={() => {
+                  onClick={async () => {
                     setEmail("reseller@brothermobiles.com");
                     setPassword("reseller123");
-                    signIn("reseller@brothermobiles.com", "reseller123");
+                    setIsLoading(true);
+                    await signIn("reseller@brothermobiles.com", "reseller123");
+                    router.push("/reseller/portal");
+                    setIsLoading(false);
                   }}
                 >
                   📱 Reseller
