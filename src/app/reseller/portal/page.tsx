@@ -1,4 +1,5 @@
-"use client";
+﻿"use client";
+export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -235,3 +236,4 @@ export default function ResellerPortalPage() {
     </div>
   );
 }
+

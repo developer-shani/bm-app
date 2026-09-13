@@ -1,4 +1,5 @@
-"use client";
+﻿"use client";
+export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -162,7 +163,7 @@ export default function LoginPage() {
             {/* Quick Demo Logins */}
             <div className="mt-6 pt-4 border-t border-border/40">
               <p className="text-xs text-center text-muted-foreground mb-3 font-medium">
-                ⚡ Quick Demo Login (Click to test roles):
+                âš¡ Quick Demo Login (Click to test roles):
               </p>
               <div className="grid grid-cols-3 gap-2">
                 <Button
@@ -179,7 +180,7 @@ export default function LoginPage() {
                     setIsLoading(false);
                   }}
                 >
-                  👑 Admin
+                  ðŸ‘‘ Admin
                 </Button>
                 <Button
                   type="button"
@@ -195,7 +196,7 @@ export default function LoginPage() {
                     setIsLoading(false);
                   }}
                 >
-                  💼 Investor
+                  ðŸ’¼ Investor
                 </Button>
                 <Button
                   type="button"
@@ -211,7 +212,7 @@ export default function LoginPage() {
                     setIsLoading(false);
                   }}
                 >
-                  📱 Reseller
+                  ðŸ“± Reseller
                 </Button>
               </div>
             </div>
@@ -226,3 +227,4 @@ export default function LoginPage() {
     </div>
   );
 }
+

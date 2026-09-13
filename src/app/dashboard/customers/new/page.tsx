@@ -1,4 +1,5 @@
-"use client";
+﻿"use client";
+export const dynamic = "force-dynamic";
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
@@ -240,14 +241,14 @@ export default function NewSalePage() {
 
   const handleCopyCredentials = (user: { name: string; email: string; password?: string; role: string; phone?: string }) => {
     const roleTitle = user.role === "investor" ? "Investor / Partner" : user.role === "reseller" ? "Reseller / Member" : "Admin";
-    const text = `🔑 *Brother Mobiles Portal Access Credentials*\n\n👤 *Name:* ${user.name}\n🛡️ *Role:* ${roleTitle}\n📧 *Email/Username:* ${user.email}\n🔒 *Password:* ${user.password || "N/A"}\n🌐 *Portal Link:* ${window.location.origin}\n\n_Brother Mobiles Shop Management System_`;
+    const text = `ðŸ”‘ *Brother Mobiles Portal Access Credentials*\n\nðŸ‘¤ *Name:* ${user.name}\nðŸ›¡ï¸ *Role:* ${roleTitle}\nðŸ“§ *Email/Username:* ${user.email}\nðŸ”’ *Password:* ${user.password || "N/A"}\nðŸŒ *Portal Link:* ${window.location.origin}\n\n_Brother Mobiles Shop Management System_`;
     navigator.clipboard.writeText(text);
     toast.success("Credentials clipboard par copy ho gaye!");
   };
 
   const handleShareWhatsApp = (user: { name: string; email: string; password?: string; role: string; phone?: string }) => {
     const roleTitle = user.role === "investor" ? "Investor / Partner" : user.role === "reseller" ? "Reseller / Member" : "Admin";
-    const text = `🔑 *Brother Mobiles Portal Access Credentials*\n\n👤 *Name:* ${user.name}\n🛡️ *Role:* ${roleTitle}\n📧 *Email/Username:* ${user.email}\n🔒 *Password:* ${user.password || "N/A"}\n🌐 *Portal Link:* ${window.location.origin}`;
+    const text = `ðŸ”‘ *Brother Mobiles Portal Access Credentials*\n\nðŸ‘¤ *Name:* ${user.name}\nðŸ›¡ï¸ *Role:* ${roleTitle}\nðŸ“§ *Email/Username:* ${user.email}\nðŸ”’ *Password:* ${user.password || "N/A"}\nðŸŒ *Portal Link:* ${window.location.origin}`;
     const cleanPhone = (user.phone || "").replace(/[^0-9]/g, "");
     const formattedPhone = cleanPhone.startsWith("0") ? "92" + cleanPhone.slice(1) : cleanPhone;
     window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(text)}`, "_blank");
@@ -950,7 +951,7 @@ export default function NewSalePage() {
               Add Partner (Investor)
             </DialogTitle>
             <DialogDescription>
-              New partner add karein — Aap ka form me bhara hua data 100% safe rahega!
+              New partner add karein â€” Aap ka form me bhara hua data 100% safe rahega!
             </DialogDescription>
           </DialogHeader>
 
@@ -1062,3 +1063,4 @@ export default function NewSalePage() {
     </div>
   );
 }
+

@@ -1,8 +1,10 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import "./globals.css";
+import { Suspense } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/hooks/use-auth";
+import { TopLoader } from "@/components/ui/top-loader";
 
 export const metadata: Metadata = {
   title: "Brother Mobiles - Installment Sales Manager",
@@ -25,6 +27,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
+            <Suspense fallback={null}>
+              <TopLoader />
+            </Suspense>
             {children}
             <Toaster position="top-right" richColors closeButton />
           </AuthProvider>

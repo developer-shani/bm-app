@@ -1,8 +1,7 @@
-import { initializeApp, getApps } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
-import { getAnalytics, isSupported } from "firebase/analytics";
+﻿import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth, Auth } from "firebase/auth";
+import { getFirestore, Firestore } from "firebase/firestore";
+import { getStorage, FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAVpsDS2MeGbo-YliX0kc5jSQM6BzJ2hJo",
@@ -14,20 +13,37 @@ const firebaseConfig = {
   measurementId: "G-EYLETE02KB",
 };
 
-// Initialize Firebase (prevent duplicate initialization)
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+// Initialize Firebase App safely
+export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Firebase services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+// Safe lazy service accessors to prevent SSR node evaluation errors during Next.js static prerender
+let authInstance: Auth | null = null;
+let dbInstance: Firestore | null = null;
+let storageInstance: FirebaseStorage | null = null;
 
-// Analytics (only in browser)
-export const initAnalytics = async () => {
-  if (typeof window !== "undefined" && (await isSupported())) {
-    return getAnalytics(app);
+export const getFirebaseAuth = (): Auth => {
+  if (!authInstance) {
+    authInstance = getAuth(app);
   }
-  return null;
+  return authInstance;
 };
+
+export const getFirebaseDb = (): Firestore => {
+  if (!dbInstance) {
+    dbInstance = getFirestore(app);
+  }
+  return dbInstance;
+};
+
+export const getFirebaseStorage = (): FirebaseStorage => {
+  if (!storageInstance) {
+    storageInstance = getStorage(app);
+  }
+  return storageInstance;
+};
+
+export const auth = typeof window !== "undefined" ? getAuth(app) : ({} as any);
+export const db = typeof window !== "undefined" ? getFirestore(app) : ({} as any);
+export const storage = typeof window !== "undefined" ? getStorage(app) : ({} as any);
 
 export default app;

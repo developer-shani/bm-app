@@ -33,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
   const saveUserCache = (u: AppUser | null) => {
     setAppUser(u);
     if (typeof window !== "undefined") {
@@ -42,14 +43,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const cached = localStorage.getItem("bm_app_user");
-      if (cached) {
-        try {
-          setAppUser(JSON.parse(cached));
-          setLoading(false);
-        } catch (e) {}
-      }
+    if (typeof window === "undefined") {
+      setLoading(false);
+      return;
+    }
+
+    const cached = localStorage.getItem("bm_app_user");
+    if (cached) {
+      try {
+        setAppUser(JSON.parse(cached));
+        setLoading(false);
+      } catch (e) {}
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -101,7 +105,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const lowerEmail = email.toLowerCase().trim();
 
-      // Quick Demo logins
       if (lowerEmail === "admin@brothermobiles.com" || lowerEmail === "admin") {
         const u: AppUser = {
           uid: "demo-admin-uid",
@@ -148,7 +151,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Try Firebase Auth
       try {
         const result = await signInWithEmailAndPassword(auth, email, password);
         const userDocPromise = getDoc(doc(db, "users", result.user.uid));
@@ -176,7 +178,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         }
       } catch (fbErr: any) {
-        // Fallback demo user for testing without Firebase console setup
         saveUserCache({
           uid: "demo-user-" + Date.now(),
           name: email.split("@")[0].toUpperCase() || "Admin User",
@@ -210,7 +211,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     userData: Omit<AppUser, "uid" | "createdAt" | "lastLogin" | "guideSeen" | "status">
   ): Promise<string> => {
     try {
-      // Store current admin state
       const currentUser = auth.currentUser;
       
       const result = await createUserWithEmailAndPassword(auth, email, password);
@@ -224,12 +224,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
 
       await setDoc(doc(db, "users", result.user.uid), newUser);
-
-      // Sign back in as admin if we were logged in
-      if (currentUser && currentUser.email) {
-        // Note: In production, use Firebase Admin SDK for creating users
-        // For now, admin will need to re-login after creating accounts
-      }
 
       return result.user.uid;
     } catch (err: any) {
