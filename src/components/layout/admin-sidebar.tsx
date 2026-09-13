@@ -120,8 +120,7 @@ export function AdminSidebar({
       <aside
         className={cn(
           "fixed left-0 top-0 z-50 h-screen border-r border-border/50 bg-background/95 lg:bg-card/50 backdrop-blur-xl transition-all duration-300 ease-in-out flex flex-col",
-          collapsed ? "lg:w-[68px]" : "lg:w-[260px]",
-          "w-[280px]",
+          collapsed ? "w-[68px]" : "w-[280px] sm:w-[260px]",
           mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"
         )}
       >
