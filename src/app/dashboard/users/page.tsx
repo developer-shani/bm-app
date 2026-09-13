@@ -363,12 +363,12 @@ export default function UsersPage() {
         </div>
 
         {/* Action Tabs */}
-        <div className="flex bg-muted/60 p-1 rounded-xl border border-border/50 self-start md:self-auto">
+        <div className="flex flex-wrap sm:flex-nowrap overflow-x-auto bg-muted/60 p-1 rounded-xl border border-border/50 w-full sm:w-auto gap-1">
           <Button
             variant={activeTab === "all" ? "default" : "ghost"}
             size="sm"
             onClick={() => setActiveTab("all")}
-            className="gap-1.5 text-xs font-semibold"
+            className="gap-1.5 text-xs font-semibold flex-1 sm:flex-none justify-center"
           >
             <Users className="w-3.5 h-3.5" />
             All Members ({usersList.length})
@@ -377,7 +377,7 @@ export default function UsersPage() {
             variant={activeTab === "add-investor" ? "default" : "ghost"}
             size="sm"
             onClick={() => setActiveTab("add-investor")}
-            className="gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400"
+            className="gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex-1 sm:flex-none justify-center"
           >
             <Wallet className="w-3.5 h-3.5" />
             + Add Investor (Partner)
@@ -386,7 +386,7 @@ export default function UsersPage() {
             variant={activeTab === "add-reseller" ? "default" : "ghost"}
             size="sm"
             onClick={() => setActiveTab("add-reseller")}
-            className="gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400"
+            className="gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 flex-1 sm:flex-none justify-center"
           >
             <Handshake className="w-3.5 h-3.5" />
             + Add Reseller
@@ -398,23 +398,23 @@ export default function UsersPage() {
       {activeTab === "all" && (
         <div className="space-y-4">
           {/* Filters & Search */}
-          <div className="flex flex-wrap gap-3">
-            <div className="relative flex-1 min-w-[240px]">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+            <div className="relative flex-1 min-w-[200px] w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder="Search by name, phone, email..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-10 text-xs"
+                className="pl-9 h-10 text-xs w-full"
               />
             </div>
 
-            <div className="flex gap-1.5 bg-muted/40 p-1 rounded-xl border">
+            <div className="flex flex-wrap sm:flex-nowrap overflow-x-auto bg-muted/40 p-1 rounded-xl border w-full sm:w-auto gap-1">
               <Button
                 variant={roleFilter === "all" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setRoleFilter("all")}
-                className="text-xs h-8"
+                className="text-xs h-8 flex-1 sm:flex-none"
               >
                 All Roles
               </Button>
@@ -422,7 +422,7 @@ export default function UsersPage() {
                 variant={roleFilter === "investor" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setRoleFilter("investor")}
-                className="text-xs h-8 text-emerald-600 dark:text-emerald-400"
+                className="text-xs h-8 text-emerald-600 dark:text-emerald-400 flex-1 sm:flex-none"
               >
                 Investors ({usersList.filter((u) => u.role === "investor").length})
               </Button>
@@ -430,7 +430,7 @@ export default function UsersPage() {
                 variant={roleFilter === "reseller" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setRoleFilter("reseller")}
-                className="text-xs h-8 text-blue-600 dark:text-blue-400"
+                className="text-xs h-8 text-blue-600 dark:text-blue-400 flex-1 sm:flex-none"
               >
                 Resellers ({usersList.filter((u) => u.role === "reseller").length})
               </Button>
@@ -438,7 +438,7 @@ export default function UsersPage() {
                 variant={roleFilter === "admin" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setRoleFilter("admin")}
-                className="text-xs h-8"
+                className="text-xs h-8 flex-1 sm:flex-none"
               >
                 Admins ({usersList.filter((u) => u.role === "admin").length})
               </Button>
