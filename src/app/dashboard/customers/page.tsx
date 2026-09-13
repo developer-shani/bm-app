@@ -64,7 +64,7 @@ export default function CustomersPage() {
     try {
       const q = query(collection(db, "customers"), orderBy("createdAt", "desc"));
       const fetchPromise = getDocs(q);
-      const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 1000));
+      const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 300));
       const snapshot: any = await Promise.race([fetchPromise, timeoutPromise]).catch(() => null);
 
       if (snapshot && snapshot.docs) {

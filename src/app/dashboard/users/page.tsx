@@ -141,7 +141,7 @@ export default function UsersPage() {
         getDocs(collection(db, "investors")),
         getDocs(collection(db, "resellers")),
       ]);
-      const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 1000));
+      const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 300));
       const [invSnap, resSnap]: any = await Promise.race([fetchPromise, timeoutPromise]).catch(() => [null, null]);
 
       if (invSnap && resSnap) {

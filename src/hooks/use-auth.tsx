@@ -57,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (firebaseUser) {
         try {
           const userDocPromise = getDoc(doc(db, "users", firebaseUser.uid));
-          const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 1000));
+          const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 300));
           const userDoc: any = await Promise.race([userDocPromise, timeoutPromise]).catch(() => null);
 
           if (userDoc && userDoc.exists()) {
@@ -139,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const result = await signInWithEmailAndPassword(auth, email, password);
         const userDocPromise = getDoc(doc(db, "users", result.user.uid));
-        const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 1000));
+        const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 300));
         const userDoc: any = await Promise.race([userDocPromise, timeoutPromise]).catch(() => null);
 
         if (userDoc && userDoc.exists()) {
