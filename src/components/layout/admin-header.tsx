@@ -12,10 +12,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Bell, LogOut, Moon, Sun, User, Settings } from "lucide-react";
+import { Bell, LogOut, Moon, Sun, User, Settings, Menu } from "lucide-react";
 import { useTheme } from "next-themes";
 
-export function AdminHeader() {
+interface AdminHeaderProps {
+  onMenuToggle?: () => void;
+}
+
+export function AdminHeader({ onMenuToggle }: AdminHeaderProps) {
   const { appUser, signOut } = useAuth();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
@@ -35,19 +39,30 @@ export function AdminHeader() {
     : "AD";
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-xl px-6">
-      <div>
-        <h2 className="text-lg font-semibold tracking-tight">
-          {appUser?.fullName ? `Welcome, ${appUser.fullName.split(" ")[0]}` : "Dashboard"}
-        </h2>
-        <p className="text-xs text-muted-foreground">
-          {new Date().toLocaleDateString("en-PK", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
-        </p>
+    <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/50 bg-background/80 backdrop-blur-xl px-3 sm:px-6">
+      <div className="flex items-center gap-2">
+        {onMenuToggle && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onMenuToggle}
+            className="md:hidden h-9 w-9 rounded-lg"
+          >
+            <Menu className="h-5 w-5 text-foreground" />
+          </Button>
+        )}
+        <div>
+          <h2 className="text-sm sm:text-lg font-semibold tracking-tight">
+            {appUser?.fullName ? `Welcome, ${appUser.fullName.split(" ")[0]}` : "Dashboard"}
+          </h2>
+          <p className="text-[10px] sm:text-xs text-muted-foreground">
+            {new Date().toLocaleDateString("en-PK", {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+            })}
+          </p>
+        </div>
       </div>
 
       <div className="flex items-center gap-2">

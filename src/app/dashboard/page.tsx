@@ -77,23 +77,23 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Page Title */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
             Overview of your business performance
           </p>
         </div>
-        <div className="flex gap-2">
-          <Link href="/dashboard/recovery">
-            <Button variant="outline" className="gap-2 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10">
-              <CreditCard className="w-4 h-4" />
+        <div className="flex items-center gap-2">
+          <Link href="/dashboard/recovery" className="flex-1 sm:flex-none">
+            <Button variant="outline" size="sm" className="w-full gap-1.5 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 text-xs sm:text-sm h-9">
+              <CreditCard className="w-3.5 h-3.5" />
               Add Recovery
             </Button>
           </Link>
-          <Link href="/dashboard/customers/new">
-            <Button className="gap-2 gradient-primary">
-              <Plus className="w-4 h-4" />
+          <Link href="/dashboard/customers/new" className="flex-1 sm:flex-none">
+            <Button size="sm" className="w-full gap-1.5 gradient-primary text-xs sm:text-sm h-9">
+              <Plus className="w-3.5 h-3.5" />
               New Sale
             </Button>
           </Link>
@@ -101,7 +101,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatsCard
           title="Total Customers"
           value="0"
@@ -135,7 +135,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Alert Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         {/* Overdue Alert Card */}
         <Card className="border-red-500/20 bg-red-500/5 hover:shadow-md transition-all">
           <CardContent className="p-6">

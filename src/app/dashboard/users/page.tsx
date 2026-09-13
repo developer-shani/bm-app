@@ -822,7 +822,7 @@ export default function UsersPage() {
       )}
       {/* SHARE CREDENTIALS MODAL */}
       <Dialog open={!!shareCredsUser} onOpenChange={() => setShareCredsUser(null)}>
-        <DialogContent className="sm:max-w-[450px]">
+        <DialogContent className="max-w-[95vw] sm:max-w-[450px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-primary">
               <Share2 className="w-5 h-5" />

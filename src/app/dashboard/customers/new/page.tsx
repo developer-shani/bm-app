@@ -655,7 +655,7 @@ export default function NewSalePage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Purchase Price (PKR) *</Label>
               <Input type="number" placeholder="e.g. 70000" value={purchasePrice} onChange={(e) => setPurchasePrice(e.target.value)} />
@@ -680,7 +680,7 @@ export default function NewSalePage() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Advance Payment (PKR) *</Label>
               <Input type="number" placeholder="e.g. 30000" value={advancePayment} onChange={(e) => setAdvancePayment(e.target.value)} />
@@ -943,7 +943,7 @@ export default function NewSalePage() {
       </div>
       {/* ===== MODAL 1: INLINE ADD INVESTOR / PARTNER ===== */}
       <Dialog open={showAddInvestorModal} onOpenChange={setShowAddInvestorModal}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="max-w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
               <Wallet className="w-5 h-5" />
@@ -960,7 +960,7 @@ export default function NewSalePage() {
               <Input placeholder="Partner ka pura naam" value={modalInvName} onChange={(e) => setModalInvName(e.target.value)} />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Phone Number *</Label>
                 <Input placeholder="0300-1234567" value={modalInvPhone} onChange={(e) => setModalInvPhone(e.target.value)} />
@@ -971,7 +971,7 @@ export default function NewSalePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Portal Email *</Label>
                 <Input type="email" placeholder="partner@gmail.com" value={modalInvEmail} onChange={(e) => setModalInvEmail(e.target.value)} />
@@ -982,7 +982,7 @@ export default function NewSalePage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Profit Ratio % (Investor)</Label>
                 <Input type="number" placeholder="50" value={modalInvRatio} onChange={(e) => setModalInvRatio(e.target.value)} />
@@ -1006,7 +1006,7 @@ export default function NewSalePage() {
 
       {/* ===== MODAL 2: SHARE CREDENTIALS ===== */}
       <Dialog open={!!shareCredsUser} onOpenChange={() => setShareCredsUser(null)}>
-        <DialogContent className="sm:max-w-[450px]">
+        <DialogContent className="max-w-[95vw] sm:max-w-[450px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-primary">
               <Share2 className="w-5 h-5" />
