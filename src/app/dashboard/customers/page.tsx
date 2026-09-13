@@ -128,14 +128,14 @@ export default function CustomersPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">All Customers</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+          <h1 className="text-2xl font-bold tracking-tight">All Customers</h1>
+          <p className="text-sm text-muted-foreground mt-1">
             {customers.length} total customers
           </p>
         </div>
-        <Link href="/dashboard/customers/new" className="self-start sm:self-auto">
+        <Link href="/dashboard/customers/new">
           <Button className="gap-2 gradient-primary">
             <Plus className="w-4 h-4" />
             New Sale
@@ -144,42 +144,40 @@ export default function CustomersPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[200px] w-full sm:w-auto">
+      <div className="flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-[250px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search name, ID, phone, or model..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 w-full"
+            className="pl-10"
           />
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-1/2 sm:w-[150px]">
-              <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="Filter" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Customers</SelectItem>
-              <SelectItem value="overdue">Overdue</SelectItem>
-              <SelectItem value="due-soon">Due Soon</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-1/2 sm:w-[150px]">
-              <SortAsc className="w-4 h-4 mr-2 text-muted-foreground" />
-              <SelectValue placeholder="Sort" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="overdue">Overdue First</SelectItem>
-              <SelectItem value="newest">Newest First</SelectItem>
-              <SelectItem value="amount">Highest Amount</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-[160px]">
+            <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
+            <SelectValue placeholder="Filter" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Customers</SelectItem>
+            <SelectItem value="overdue">Overdue</SelectItem>
+            <SelectItem value="due-soon">Due Soon</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="completed">Completed</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger className="w-[160px]">
+            <SortAsc className="w-4 h-4 mr-2 text-muted-foreground" />
+            <SelectValue placeholder="Sort" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="overdue">Overdue First</SelectItem>
+            <SelectItem value="newest">Newest First</SelectItem>
+            <SelectItem value="amount">Highest Amount</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Customer List */}

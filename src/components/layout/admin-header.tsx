@@ -46,7 +46,7 @@ export function AdminHeader({ onMenuToggle }: AdminHeaderProps) {
             variant="ghost"
             size="icon"
             onClick={onMenuToggle}
-            className="lg:hidden h-9 w-9 rounded-lg"
+            className="md:hidden h-9 w-9 rounded-lg"
           >
             <Menu className="h-5 w-5 text-foreground" />
           </Button>

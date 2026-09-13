@@ -7,7 +7,6 @@ import { AdminSidebar } from "@/components/layout/admin-sidebar";
 import { AdminHeader } from "@/components/layout/admin-header";
 import { MobileBottomNav } from "@/components/layout/mobile-bottom-nav";
 import { Loader2 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 export default function DashboardLayout({
   children,
@@ -17,7 +16,6 @@ export default function DashboardLayout({
   const { appUser, loading } = useAuth();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     if (!loading) {
@@ -41,23 +39,17 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col relative overflow-x-hidden">
-      <AdminSidebar
-        mobileOpen={mobileOpen}
-        onCloseMobile={() => setMobileOpen(false)}
-        collapsed={collapsed}
-        onToggleCollapse={() => setCollapsed(!collapsed)}
-      />
-      <div
-        className={cn(
-          "transition-all duration-300 min-h-screen flex flex-col flex-1 pb-20 lg:pb-0",
-          "pl-0",
-          collapsed ? "lg:pl-[68px]" : "lg:pl-[260px]"
-        )}
-      >
+    <div className="min-h-screen bg-background overflow-x-hidden">
+      {/* Desktop sidebar (hidden on mobile via hidden md:flex) */}
+      <AdminSidebar mobileOpen={mobileOpen} onCloseMobile={() => setMobileOpen(false)} />
+
+      {/* Main content: no left padding on mobile, 260px on desktop */}
+      <div className="pl-0 md:pl-[260px] min-h-screen flex flex-col pb-[72px] md:pb-0">
         <AdminHeader onMenuToggle={() => setMobileOpen(!mobileOpen)} />
         <main className="flex-1 p-3 sm:p-6 max-w-7xl mx-auto w-full">{children}</main>
       </div>
+
+      {/* Mobile bottom quick nav (hidden on desktop via md:hidden) */}
       <MobileBottomNav onMenuToggle={() => setMobileOpen(!mobileOpen)} />
     </div>
   );
