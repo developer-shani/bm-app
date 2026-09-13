@@ -1,0 +1,234 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/use-auth";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Handshake,
+  TrendingUp,
+  Users,
+  Smartphone,
+  Bell,
+  LogOut,
+  Sun,
+  Moon,
+  Info,
+  IndianRupee,
+} from "lucide-react";
+import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
+import { Reseller, Customer } from "@/types";
+import { formatCurrency, formatDate } from "@/lib/utils";
+
+export default function ResellerPortalPage() {
+  const { appUser, signOut } = useAuth();
+  const { theme, setTheme } = useTheme();
+  const router = useRouter();
+
+  const [reseller, setReseller] = useState<Reseller | null>(null);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showGuide, setShowGuide] = useState(false);
+
+  useEffect(() => {
+    if (!appUser) return;
+    loadData();
+  }, [appUser]);
+
+  const loadData = async () => {
+    if (!appUser) return;
+    try {
+      const resSnap = await getDocs(query(collection(db, "resellers"), where("userId", "==", appUser.uid)));
+      if (resSnap.empty) { setLoading(false); return; }
+      const res = { id: resSnap.docs[0].id, ...resSnap.docs[0].data() } as Reseller;
+      setReseller(res);
+
+      const custSnap = await getDocs(query(collection(db, "customers"), where("resellerId", "==", res.id)));
+      setCustomers(custSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Customer)));
+
+      if (!appUser.guideSeen) setShowGuide(true);
+    } catch (err) {
+      console.error("Error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const totalCommission = customers.reduce((sum, c) => sum + c.referralCommissionAmount, 0);
+  const expectedCommission = customers
+    .filter((c) => c.status === "active")
+    .reduce((sum, c) => sum + c.referralCommissionAmount, 0);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background p-6 space-y-6">
+        <Skeleton className="h-16 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => <Skeleton key={i} className="h-32 w-full" />)}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-30 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+        <div className="max-w-5xl mx-auto flex items-center justify-between h-16 px-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <Handshake className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-sm font-bold">Reseller Portal</h1>
+              <p className="text-xs text-muted-foreground">{reseller?.fullName}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setShowGuide(true)}>
+              <Info className="w-4 h-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+              <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-9 w-9 text-destructive" onClick={() => { signOut(); router.push("/"); }}>
+              <LogOut className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-5xl mx-auto p-4 space-y-6 animate-fade-in">
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="hover:shadow-md transition-all">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">Total Referrals</p>
+                  <p className="text-2xl font-bold mt-1">{customers.length}</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-blue-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-md transition-all">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">Total Commission</p>
+                  <p className="text-2xl font-bold mt-1 text-green-500">{formatCurrency(totalCommission)}</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+                  <IndianRupee className="w-5 h-5 text-green-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-md transition-all">
+            <CardContent className="p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground font-medium">Expected Earning</p>
+                  <p className="text-2xl font-bold mt-1 text-blue-500">{formatCurrency(expectedCommission)}</p>
+                  <p className="text-[10px] text-muted-foreground">from active sales</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-blue-500" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Referred Customers - LIMITED VIEW */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" /> My Referred Customers
+            </CardTitle>
+            <CardDescription>Aapne jo customers refer kiye hain unki list</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {customers.length === 0 ? (
+              <div className="text-center py-8">
+                <Users className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">Abhi tak koi referral nahi hai</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {customers.map((c) => (
+                  <div key={c.id} className="p-4 rounded-xl border border-border/50 hover:border-primary/20 transition-all">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-semibold text-sm">{c.name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className="text-[10px]">{c.mobileCompany}</Badge>
+                          <span className="text-xs text-muted-foreground">{c.mobileModel}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Amount</p>
+                        <p className="font-semibold text-sm">{formatCurrency(c.sellingPrice)}</p>
+                        <div className="mt-1">
+                          <p className="text-[10px] text-muted-foreground">My Commission</p>
+                          <p className="font-bold text-sm text-green-500">{formatCurrency(c.referralCommissionAmount)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+
+      {/* Get Started Guide */}
+      <Dialog open={showGuide} onOpenChange={setShowGuide}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Welcome to Reseller Portal!</DialogTitle>
+            <DialogDescription>Ye guide aapko samjhayegi ke portal kaise kaam karta hai</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 text-sm">
+            <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
+              <h4 className="font-semibold mb-2">Total Referrals</h4>
+              <p className="text-muted-foreground">Jitne customers aapne refer kiye hain unki total count yahan dikhti hai.</p>
+            </div>
+            <div className="p-4 rounded-xl bg-green-500/10 border border-green-500/20">
+              <h4 className="font-semibold mb-2">Commission</h4>
+              <p className="text-muted-foreground">Har sale pe aapko commission milta hai (default 2%). Customer ke details mein aapko customer ka naam, phone company, model, amount, aur aapki commission dikhti hai.</p>
+            </div>
+            <div className="p-4 rounded-xl bg-muted border">
+              <h4 className="font-semibold mb-2">Expected Earning</h4>
+              <p className="text-muted-foreground">Jo sales abhi active hain unse aapki expected earning kya hogi ye yahan dikhta hai.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowGuide(false)} className="w-full gradient-primary">Samajh Gaya!</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

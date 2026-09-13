@@ -1,0 +1,519 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  ArrowLeft,
+  User,
+  CreditCard,
+  Phone,
+  Percent,
+  Upload,
+  Camera,
+  Loader2,
+  CheckCircle2,
+  Wallet,
+  ImagePlus,
+} from "lucide-react";
+import Link from "next/link";
+import { db, storage } from "@/lib/firebase";
+import { collection, addDoc, doc, setDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { useAuth } from "@/hooks/use-auth";
+import { toast } from "sonner";
+
+export default function AddInvestorPage() {
+  const router = useRouter();
+  const { createAccount } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [step, setStep] = useState<"form" | "confirm" | "success">("form");
+
+  // Form state
+  const [fullName, setFullName] = useState("");
+  const [cnic, setCnic] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [sharingRatio, setSharingRatio] = useState("50");
+  const [customRatio, setCustomRatio] = useState("");
+  const [hasInitialInvestment, setHasInitialInvestment] = useState(false);
+  const [investmentAmount, setInvestmentAmount] = useState("");
+  const [proofImage, setProofImage] = useState<File | null>(null);
+  const [proofPreview, setProofPreview] = useState<string>("");
+
+  const actualRatio = customRatio || sharingRatio;
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setProofImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setProofPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!fullName || !cnic || !phone || !email || !password) {
+      toast.error("Saari required fields fill karein");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Create Firebase Auth account
+      const userId = await createAccount(email, password, {
+        email,
+        fullName,
+        cnic,
+        phone,
+        role: "investor",
+        sharingRatio: parseInt(actualRatio),
+      });
+
+      // Create investor document
+      const investorData = {
+        userId,
+        fullName,
+        cnic,
+        phone,
+        email,
+        totalInvestment: hasInitialInvestment ? parseFloat(investmentAmount) || 0 : 0,
+        availableBalance: hasInitialInvestment ? parseFloat(investmentAmount) || 0 : 0,
+        totalProfit: 0,
+        totalWithdrawn: 0,
+        activeInstallments: 0,
+        sharingRatio: parseInt(actualRatio),
+        status: "active",
+        createdAt: new Date().toISOString(),
+      };
+
+      const investorRef = await addDoc(collection(db, "investors"), investorData);
+
+      // Upload proof image if provided
+      if (hasInitialInvestment && proofImage) {
+        const imageRef = ref(storage, `investments/${investorRef.id}/${Date.now()}_proof`);
+        await uploadBytes(imageRef, proofImage);
+        const imageUrl = await getDownloadURL(imageRef);
+
+        // Add investment record
+        await addDoc(collection(db, "investments"), {
+          investorId: investorRef.id,
+          investorName: fullName,
+          amount: parseFloat(investmentAmount),
+          type: "initial",
+          imageProof: imageUrl,
+          date: new Date().toISOString(),
+          note: "Initial investment",
+        });
+      } else if (hasInitialInvestment) {
+        await addDoc(collection(db, "investments"), {
+          investorId: investorRef.id,
+          investorName: fullName,
+          amount: parseFloat(investmentAmount),
+          type: "initial",
+          date: new Date().toISOString(),
+          note: "Initial investment",
+        });
+      }
+
+      setStep("success");
+      toast.success("Investor account successfully create hogaya!");
+    } catch (err: any) {
+      toast.error(err.message || "Account banane me masla aya");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (step === "success") {
+    return (
+      <div className="max-w-lg mx-auto animate-fade-in">
+        <Card className="border-green-500/20">
+          <CardContent className="p-8 text-center">
+            <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-4">
+              <CheckCircle2 className="w-8 h-8 text-green-500" />
+            </div>
+            <h3 className="text-xl font-bold mb-2">Account Created!</h3>
+            <p className="text-sm text-muted-foreground mb-1">
+              <strong>{fullName}</strong> ka investor account ban gaya hai
+            </p>
+            <p className="text-xs text-muted-foreground mb-6">
+              Login: {email}
+            </p>
+            <div className="flex gap-3 justify-center">
+              <Link href="/dashboard/investors">
+                <Button variant="outline">View All Investors</Button>
+              </Link>
+              <Button onClick={() => {
+                setStep("form");
+                setFullName(""); setCnic(""); setPhone(""); setEmail(""); setPassword("");
+                setSharingRatio("50"); setCustomRatio(""); setHasInitialInvestment(false);
+                setInvestmentAmount(""); setProofImage(null); setProofPreview("");
+              }}>
+                Add Another
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        <Link href="/dashboard/investors">
+          <Button variant="ghost" size="icon" className="rounded-lg">
+            <ArrowLeft className="w-4 h-4" />
+          </Button>
+        </Link>
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Add New Investor</h1>
+          <p className="text-sm text-muted-foreground">
+            Create investor account with login access
+          </p>
+        </div>
+      </div>
+
+      {/* Form */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <User className="w-4 h-4 text-primary" />
+            Personal Information
+          </CardTitle>
+          <CardDescription>Investor ki basic details</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Full Name */}
+          <div className="space-y-2">
+            <Label htmlFor="fullName">Full Name *</Label>
+            <Input
+              id="fullName"
+              placeholder="Investor ka pura naam"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
+          </div>
+
+          {/* CNIC */}
+          <div className="space-y-2">
+            <Label htmlFor="cnic">CNIC / ID Card Number *</Label>
+            <div className="relative">
+              <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                id="cnic"
+                placeholder="35201-1234567-1"
+                value={cnic}
+                onChange={(e) => setCnic(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+
+          {/* Phone */}
+          <div className="space-y-2">
+            <Label htmlFor="phone">Contact Number *</Label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                id="phone"
+                placeholder="03XX-XXXXXXX"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Login Details */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <User className="w-4 h-4 text-primary" />
+            Login Credentials
+          </CardTitle>
+          <CardDescription>Investor is email/password se login karega</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email Address *</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="investor@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="password">Password *</Label>
+            <Input
+              id="password"
+              type="password"
+              placeholder="Kam az kam 6 characters"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Sharing Ratio */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Percent className="w-4 h-4 text-primary" />
+            Profit Sharing Ratio
+          </CardTitle>
+          <CardDescription>Investor aur admin ke beech profit ka ratio</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex gap-2">
+            <Button
+              variant={sharingRatio === "50" && !customRatio ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setSharingRatio("50"); setCustomRatio(""); }}
+              className="flex-1"
+            >
+              50 / 50
+            </Button>
+            <Button
+              variant={sharingRatio === "40" && !customRatio ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setSharingRatio("40"); setCustomRatio(""); }}
+              className="flex-1"
+            >
+              40 / 60
+            </Button>
+            <Button
+              variant={sharingRatio === "60" && !customRatio ? "default" : "outline"}
+              size="sm"
+              onClick={() => { setSharingRatio("60"); setCustomRatio(""); }}
+              className="flex-1"
+            >
+              60 / 40
+            </Button>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="customRatio">Custom Ratio (Investor %)</Label>
+            <Input
+              id="customRatio"
+              type="number"
+              placeholder="Custom percentage e.g. 45"
+              value={customRatio}
+              onChange={(e) => setCustomRatio(e.target.value)}
+              min="0"
+              max="100"
+            />
+            {actualRatio && (
+              <p className="text-xs text-muted-foreground">
+                Investor: <strong>{actualRatio}%</strong> | Admin: <strong>{100 - parseInt(actualRatio)}%</strong>
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Initial Investment */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-primary" />
+                Initial Investment
+              </CardTitle>
+              <CardDescription>Kya investor abhi investment de raha hai?</CardDescription>
+            </div>
+            <Switch
+              checked={hasInitialInvestment}
+              onCheckedChange={setHasInitialInvestment}
+            />
+          </div>
+        </CardHeader>
+        {hasInitialInvestment && (
+          <CardContent className="space-y-4 animate-fade-in">
+            <div className="space-y-2">
+              <Label htmlFor="investmentAmount">Investment Amount (PKR) *</Label>
+              <Input
+                id="investmentAmount"
+                type="number"
+                placeholder="e.g. 500000"
+                value={investmentAmount}
+                onChange={(e) => setInvestmentAmount(e.target.value)}
+              />
+            </div>
+
+            {/* Image Upload */}
+            <div className="space-y-2">
+              <Label>Payment Proof (Image)</Label>
+              <div className="border-2 border-dashed border-border/60 rounded-xl p-6 text-center hover:border-primary/30 transition-colors">
+                {proofPreview ? (
+                  <div className="space-y-3">
+                    <img
+                      src={proofPreview}
+                      alt="Proof"
+                      className="max-h-48 mx-auto rounded-lg object-cover"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setProofImage(null); setProofPreview(""); }}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto">
+                      <ImagePlus className="w-6 h-6 text-muted-foreground" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Upload payment proof</p>
+                      <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
+                    </div>
+                    <div className="flex gap-2 justify-center">
+                      <label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          className="hidden"
+                        />
+                        <Button variant="outline" size="sm" className="gap-1.5" asChild>
+                          <span>
+                            <Upload className="w-3.5 h-3.5" />
+                            Upload
+                          </span>
+                        </Button>
+                      </label>
+                      <label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handleImageChange}
+                          className="hidden"
+                        />
+                        <Button variant="outline" size="sm" className="gap-1.5" asChild>
+                          <span>
+                            <Camera className="w-3.5 h-3.5" />
+                            Camera
+                          </span>
+                        </Button>
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Submit */}
+      <div className="flex justify-end gap-3 pb-8">
+        <Link href="/dashboard/investors">
+          <Button variant="outline">Cancel</Button>
+        </Link>
+        {!hasInitialInvestment ? (
+          <Button
+            onClick={() => {
+              if (!fullName || !cnic || !phone || !email || !password) {
+                toast.error("Saari required fields fill karein");
+                return;
+              }
+              setStep("confirm");
+            }}
+            className="gradient-primary gap-2"
+          >
+            <CheckCircle2 className="w-4 h-4" />
+            Create Account
+          </Button>
+        ) : (
+          <Button
+            onClick={handleSubmit}
+            disabled={isLoading}
+            className="gradient-primary gap-2"
+          >
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+            Create with Investment
+          </Button>
+        )}
+      </div>
+
+      {/* Confirmation Dialog inline */}
+      {step === "confirm" && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+          <Card className="max-w-md w-full animate-scale-in">
+            <CardHeader className="text-center">
+              <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto mb-2">
+                <User className="w-6 h-6 text-primary" />
+              </div>
+              <CardTitle>Confirm Account Creation</CardTitle>
+              <CardDescription>
+                Kya aap sure hain ke ye account banana chahte hain?
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Name:</span>
+                  <span className="font-medium">{fullName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">CNIC:</span>
+                  <span className="font-medium">{cnic}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Ratio:</span>
+                  <span className="font-medium">{actualRatio}% / {100 - parseInt(actualRatio)}%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Investment:</span>
+                  <Badge variant="secondary">No initial investment</Badge>
+                </div>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setStep("form")}
+                >
+                  Go Back
+                </Button>
+                <Button
+                  className="flex-1 gradient-primary"
+                  onClick={handleSubmit}
+                  disabled={isLoading}
+                >
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Yes, Create
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+}
