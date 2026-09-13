@@ -45,9 +45,12 @@ export default function ResellerPortalPage() {
   const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
-    if (!appUser) return;
+    if (!appUser) {
+      router.push("/");
+      return;
+    }
     loadData();
-  }, [appUser]);
+  }, [appUser, router]);
 
   const loadData = async () => {
     if (!appUser) return;
