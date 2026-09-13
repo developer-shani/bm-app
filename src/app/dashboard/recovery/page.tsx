@@ -660,7 +660,7 @@ export default function RecoveryPage() {
                           Investor: {rec.investorName} &bull; Date: {formatDate(rec.date)} &bull; Method: {rec.paymentMethod || "Cash"}
                         </p>
                         {rec.notes && (
-                          <p className="text-xs italic text-muted-foreground mt-1">"{rec.notes}"</p>
+                          <p className="text-xs italic text-muted-foreground mt-1">&quot;{rec.notes}&quot;</p>
                         )}
                       </div>
                     </div>
