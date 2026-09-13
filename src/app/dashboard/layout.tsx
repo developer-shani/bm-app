@@ -50,9 +50,9 @@ export default function DashboardLayout({
       />
       <div
         className={cn(
-          "transition-all duration-300 min-h-screen flex flex-col flex-1 pb-20 md:pb-0",
+          "transition-all duration-300 min-h-screen flex flex-col flex-1 pb-20 lg:pb-0",
           "pl-0",
-          collapsed ? "md:pl-[68px]" : "md:pl-[260px]"
+          collapsed ? "lg:pl-[68px]" : "lg:pl-[260px]"
         )}
       >
         <AdminHeader onMenuToggle={() => setMobileOpen(!mobileOpen)} />

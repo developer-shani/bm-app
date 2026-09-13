@@ -104,25 +104,25 @@ export function AdminSidebar({
 }: AdminSidebarProps) {
   const pathname = usePathname();
 
-  // Show full label if either mobile drawer is open or desktop is not collapsed
+  // Show full label if mobile drawer is open or desktop is not collapsed
   const showLabels = mobileOpen || !collapsed;
 
   return (
     <>
-      {/* Mobile Backdrop Overlay */}
+      {/* Mobile / Tablet Backdrop Overlay */}
       {mobileOpen && (
         <div
           onClick={onCloseMobile}
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden transition-opacity"
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden transition-opacity"
         />
       )}
 
       <aside
         className={cn(
-          "fixed left-0 top-0 z-50 h-screen border-r border-border/50 bg-background/95 md:bg-card/50 backdrop-blur-xl transition-all duration-300 ease-in-out flex flex-col",
-          collapsed ? "md:w-[68px]" : "md:w-[260px]",
+          "fixed left-0 top-0 z-50 h-screen border-r border-border/50 bg-background/95 lg:bg-card/50 backdrop-blur-xl transition-all duration-300 ease-in-out flex flex-col",
+          collapsed ? "lg:w-[68px]" : "lg:w-[260px]",
           "w-[280px]",
-          mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full md:translate-x-0"
+          mobileOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"
         )}
       >
         {/* Brand Header */}
@@ -146,7 +146,7 @@ export function AdminSidebar({
             variant="ghost"
             size="icon"
             onClick={onCloseMobile}
-            className="md:hidden h-8 w-8 text-muted-foreground"
+            className="lg:hidden h-8 w-8 text-muted-foreground"
           >
             <ChevronLeft className="w-5 h-5" />
           </Button>
@@ -209,8 +209,8 @@ export function AdminSidebar({
           </nav>
         </ScrollArea>
 
-        {/* Collapse Toggle (Desktop only) */}
-        <div className="p-3 border-t border-border/50 hidden md:block">
+        {/* Collapse Toggle (Desktop lg+ only) */}
+        <div className="p-3 border-t border-border/50 hidden lg:block">
           <Button
             variant="ghost"
             size="sm"
