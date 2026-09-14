@@ -94,8 +94,9 @@ export default function InvestorPortalPage() {
   const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
-  const [editProfileImage, setEditProfileImage] = useState("");
+  const [editPhotoUrl, setEditPhotoUrl] = useState("");
   const [profileEditLoading, setProfileEditLoading] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
 
   useEffect(() => {
     if (!appUser) {
