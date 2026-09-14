@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
@@ -142,7 +142,7 @@ export default function UsersPage() {
         getDocs(collection(db, "investors")),
         getDocs(collection(db, "resellers")),
       ]);
-      const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 300));
+      const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 10000));
       const [invSnap, resSnap]: any = await Promise.race([fetchPromise, timeoutPromise]).catch(() => [null, null]);
 
       if (invSnap && resSnap) {
@@ -231,8 +231,9 @@ export default function UsersPage() {
           role: "investor",
           sharingRatio: actualRatio,
         });
-      } catch (authErr) {
+      } catch (authErr: any) {
         console.warn("Auth creation fallback:", authErr);
+        toast.warning(authErr?.message || "Login account nahi bana, lekin data save ho raha hai");
       }
 
       const investorData = {
@@ -267,8 +268,9 @@ export default function UsersPage() {
             date: new Date().toISOString(),
             note: "Initial investment",
           });
-        } catch (imgErr) {
+        } catch (imgErr: any) {
           console.warn("Storage upload warn:", imgErr);
+          toast.warning("Investment proof image upload nahi ho saki");
         }
       }
 
@@ -306,8 +308,9 @@ export default function UsersPage() {
             phone: resPhone,
             role: "reseller",
           });
-        } catch (authErr) {
+        } catch (authErr: any) {
           console.warn("Auth creation fallback:", authErr);
+          toast.warning(authErr?.message || "Login account nahi bana, lekin data save ho raha hai");
         }
       }
 

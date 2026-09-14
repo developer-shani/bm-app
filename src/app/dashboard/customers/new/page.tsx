@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState, useMemo } from "react";
@@ -160,7 +160,7 @@ export default function NewSalePage() {
           getDocs(query(collection(db, "resellers"), orderBy("createdAt", "desc"))),
           getDocs(collection(db, "mobileCompanies")),
         ]);
-        const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 300));
+        const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 10000));
         const [invSnapshot, resSnapshot, compSnapshot]: any = await Promise.race([fetchPromise, timeoutPromise]).catch(() => [null, null, null]);
 
         if (invSnapshot && resSnapshot && compSnapshot) {
@@ -272,8 +272,9 @@ export default function NewSalePage() {
           role: "investor",
           sharingRatio: parseInt(modalInvRatio) || 50,
         });
-      } catch (authErr) {
+      } catch (authErr: any) {
         console.warn("Auth creation fallback:", authErr);
+        toast.warning(authErr?.message || "Login account nahi bana, lekin data save ho raha hai");
       }
 
       const initialAmount = parseFloat(modalInvAmount) || 0;
