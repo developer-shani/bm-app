@@ -50,27 +50,27 @@ export default function ResellerPortalPage() {
       router.push("/");
       return;
     }
-    loadData();
-  }, [appUser, router]);
 
-  const loadData = async () => {
-    if (!appUser) return;
-    try {
-      const resSnap = await getDocs(query(collection(db, "resellers"), where("userId", "==", appUser.uid)));
-      if (resSnap.empty) { setLoading(false); return; }
-      const res = { id: resSnap.docs[0].id, ...resSnap.docs[0].data() } as Reseller;
-      setReseller(res);
+    const qRes = query(collection(db, "resellers"), where("userId", "==", appUser.uid));
+    const unsubRes = onSnapshot(qRes, (snap) => {
+      if (!snap.empty) {
+        const res = { id: snap.docs[0].id, ...snap.docs[0].data() } as Reseller;
+        setReseller(res);
 
-      const custSnap = await getDocs(query(collection(db, "customers"), where("resellerId", "==", res.id)));
-      setCustomers(custSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Customer)));
-
-      if (!appUser.guideSeen) setShowGuide(true);
-    } catch (err) {
-      console.error("Error:", err);
-    } finally {
+        onSnapshot(query(collection(db, "customers"), where("resellerId", "==", res.id)), (cSnap) => {
+          setCustomers(cSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Customer)));
+        });
+      }
       setLoading(false);
-    }
-  };
+    }, (err) => {
+      console.warn("Reseller portal realtime sync error:", err);
+      setLoading(false);
+    });
+
+    if (appUser && !appUser.guideSeen) setShowGuide(true);
+
+    return () => unsubRes();
+  }, [appUser, router]);
 
   const totalCommission = customers.reduce((sum, c) => sum + c.referralCommissionAmount, 0);
   const expectedCommission = customers

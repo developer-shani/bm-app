@@ -20,7 +20,7 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, onSnapshot } from "firebase/firestore";
 import { Investor } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 
@@ -30,21 +30,38 @@ export default function InvestorsPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    loadInvestors();
-  }, []);
-
-  const loadInvestors = async () => {
-    try {
-      const q = query(collection(db, "investors"), orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Investor));
-      setInvestors(data);
-    } catch (err) {
-      console.error("Error loading investors:", err);
-    } finally {
-      setLoading(false);
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("bm_cached_investors");
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setInvestors(parsed);
+            setLoading(false);
+          }
+        } catch (e) {}
+      }
     }
-  };
+
+    const q = query(collection(db, "investors"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Investor));
+        setInvestors(data);
+        setLoading(false);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("bm_cached_investors", JSON.stringify(data));
+        }
+      },
+      (err) => {
+        console.warn("Investors realtime sync error:", err);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   const filteredInvestors = investors.filter(
     (inv) =>

@@ -32,7 +32,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, onSnapshot } from "firebase/firestore";
 import { Customer } from "@/types";
 import { formatCurrency, formatDate, getDaysOverdue, getInstallmentStatus } from "@/lib/utils";
 import { generateSmsMessage } from "@/lib/calculations";
@@ -58,29 +58,26 @@ export default function CustomersPage() {
         } catch (e) {}
       }
     }
-    loadCustomers();
-  }, []);
 
-  const loadCustomers = async () => {
-    try {
-      const q = query(collection(db, "customers"), orderBy("createdAt", "desc"));
-      const fetchPromise = getDocs(q);
-      const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 300));
-      const snapshot: any = await Promise.race([fetchPromise, timeoutPromise]).catch(() => null);
-
-      if (snapshot && snapshot.docs) {
+    const q = query(collection(db, "customers"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
         const data = snapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Customer));
         setCustomers(data);
+        setLoading(false);
         if (typeof window !== "undefined") {
           localStorage.setItem("bm_cached_customers", JSON.stringify(data));
         }
+      },
+      (err) => {
+        console.warn("Realtime customers sync error:", err);
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Error loading customers:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    );
+
+    return () => unsubscribe();
+  }, []);
 
   const filteredCustomers = customers
     .filter((c) => {

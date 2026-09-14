@@ -30,7 +30,7 @@ import {
   FileText,
 } from "lucide-react";
 import { db, storage } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy, addDoc, updateDoc, doc } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, addDoc, updateDoc, doc, onSnapshot } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { Customer, Investor } from "@/types";
 import { formatCurrency, formatDate, getDaysOverdue, getInstallmentStatus, cn } from "@/lib/utils";
@@ -76,28 +76,32 @@ export default function RecoveryPage() {
   } | null>(null);
 
   useEffect(() => {
-    loadAllData();
-  }, []);
-
-  const loadAllData = async () => {
-    setLoadingData(true);
-    try {
-      const [custSnap, invSnap, recSnap] = await Promise.all([
-        getDocs(query(collection(db, "customers"), orderBy("createdAt", "desc"))),
-        getDocs(collection(db, "investors")),
-        getDocs(query(collection(db, "recoveries"), orderBy("date", "desc"))),
-      ]);
-
-      const custData = custSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Customer));
-      setCustomers(custData);
-      setInvestors(invSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Investor)));
-      setRecoveryHistory(recSnap.docs.map((d) => ({ id: d.id, ...d.data() } as RecoveryRecord)));
-    } catch (err) {
-      console.error("Error loading recovery data:", err);
-    } finally {
+    // 1. Realtime Customers Listener
+    const qCust = query(collection(db, "customers"), orderBy("createdAt", "desc"));
+    const unsubCust = onSnapshot(qCust, (snap) => {
+      const data = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Customer));
+      setCustomers(data);
       setLoadingData(false);
-    }
-  };
+    }, (err) => console.warn("Recovery cust sync warn:", err));
+
+    // 2. Realtime Investors Listener
+    const qInv = collection(db, "investors");
+    const unsubInv = onSnapshot(qInv, (snap) => {
+      setInvestors(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Investor)));
+    }, (err) => console.warn("Recovery inv sync warn:", err));
+
+    // 3. Realtime Recoveries Listener
+    const qRec = query(collection(db, "recoveries"), orderBy("date", "desc"));
+    const unsubRec = onSnapshot(qRec, (snap) => {
+      setRecoveryHistory(snap.docs.map((d) => ({ id: d.id, ...d.data() } as RecoveryRecord)));
+    }, (err) => console.warn("Recovery rec sync warn:", err));
+
+    return () => {
+      unsubCust();
+      unsubInv();
+      unsubRec();
+    };
+  }, []);
 
   // Filter active customers for recovery selection
   const activeCustomers = customers.filter((c) => c.status === "active");

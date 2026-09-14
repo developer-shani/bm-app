@@ -1,4 +1,6 @@
-"use client";
+﻿import os
+
+dashboard_code = """"use client";
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
@@ -95,7 +97,7 @@ export default function DashboardPage() {
       setLoading(false);
     }, (err) => console.warn("Cust realtime sync warn:", err));
 
-    // 2. Real-time Investors Listener
+    # 2. Real-time Investors Listener
     const qInv = query(collection(db, "investors"), orderBy("createdAt", "desc"));
     const unsubInv = onSnapshot(qInv, (snap) => {
       const data = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Investor));
@@ -105,7 +107,7 @@ export default function DashboardPage() {
       }
     }, (err) => console.warn("Inv realtime sync warn:", err));
 
-    // 3. Real-time Resellers Listener
+    # 3. Real-time Resellers Listener
     const qRes = query(collection(db, "resellers"), orderBy("createdAt", "desc"));
     const unsubRes = onSnapshot(qRes, (snap) => {
       const data = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Reseller));
@@ -115,7 +117,7 @@ export default function DashboardPage() {
       }
     }, (err) => console.warn("Res realtime sync warn:", err));
 
-    // 4. Real-time Recoveries Listener
+    # 4. Real-time Recoveries Listener
     const qRec = query(collection(db, "recoveries"), orderBy("date", "desc"));
     const unsubRec = onSnapshot(qRec, (snap) => {
       const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -395,3 +397,9 @@ export default function DashboardPage() {
     </div>
   );
 }
+"""
+
+with open("src/app/dashboard/page.tsx", "w", encoding="utf-8") as f:
+    f.write(dashboard_code)
+
+print("Real-time Dashboard page updated cleanly!")

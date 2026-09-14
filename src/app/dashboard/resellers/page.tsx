@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Handshake, Plus, Search, Phone } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, onSnapshot } from "firebase/firestore";
 import { Reseller } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 
@@ -20,15 +20,37 @@ export default function ResellersPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const q = query(collection(db, "resellers"), orderBy("createdAt", "desc"));
-        const snap = await getDocs(q);
-        setResellers(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Reseller)));
-      } catch (err) { console.error(err); }
-      finally { setLoading(false); }
-    };
-    load();
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("bm_cached_resellers");
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setResellers(parsed);
+            setLoading(false);
+          }
+        } catch (e) {}
+      }
+    }
+
+    const q = query(collection(db, "resellers"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Reseller));
+        setResellers(data);
+        setLoading(false);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("bm_cached_resellers", JSON.stringify(data));
+        }
+      },
+      (err) => {
+        console.warn("Resellers realtime sync error:", err);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
   }, []);
 
   const filtered = resellers.filter((r) =>
