@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
@@ -13,7 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -47,6 +46,17 @@ export default function InvestorsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Agreement image modal state
+  const [viewAgreementUrl, setViewAgreementUrl] = useState<string | null>(null);
+
+  // Add Balance Dialog State
+  const [balanceInvestor, setBalanceInvestor] = useState<Investor | null>(null);
+  const [addAmount, setAddAmount] = useState("");
+  const [addNote, setAddNote] = useState("");
+  const [balanceProofFile, setBalanceProofFile] = useState<File | null>(null);
+  const [balanceProofPreview, setBalanceProofPreview] = useState("");
+  const [balanceLoading, setBalanceLoading] = useState(false);
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const cached = localStorage.getItem("bm_cached_investors");
@@ -78,7 +88,9 @@ export default function InvestorsPage() {
       }
     );
 
-  
+    return () => unsubscribe();
+  }, []);
+
   const handleBalanceProofChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -158,82 +170,6 @@ export default function InvestorsPage() {
     }
   };
 
-  return () => unsubscribe();
-  }, []);
-
-
-  const [balanceInvestor, setBalanceInvestor] = useState<Investor | null>(null);
-  const [balanceAmount, setBalanceAmount] = useState("");
-  const [balanceProof, setBalanceProof] = useState<File | null>(null);
-  const [balanceProofPreview, setBalanceProofPreview] = useState("");
-  const [balanceSaving, setBalanceSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const handleAddBalance = async () => {
-    if (!balanceInvestor || !balanceAmount) {
-      toast.error("Amount zaruri hai");
-      return;
-    }
-    setBalanceSaving(true);
-    try {
-      const amount = parseFloat(balanceAmount);
-      let proofUrl = "";
-      if (balanceProof) {
-        const storageRef = ref(storage, "investments/" + Date.now() + "_" + balanceProof.name);
-        await uploadBytes(storageRef, balanceProof);
-        proofUrl = await getDownloadURL(storageRef);
-      }
-
-      // Add investment record
-      await addDoc(collection(db, "investments"), {
-        investorId: balanceInvestor.id,
-        investorName: balanceInvestor.fullName,
-        amount,
-        type: "additional",
-        imageProof: proofUrl,
-        date: new Date().toISOString(),
-        note: "Balance added by admin",
-      });
-
-      // Update investor balance
-      const newTotal = (balanceInvestor.totalInvestment || 0) + amount;
-      const newAvailable = (balanceInvestor.availableBalance || 0) + amount;
-      await updateDoc(doc(db, "investors", balanceInvestor.id), {
-        totalInvestment: newTotal,
-        availableBalance: newAvailable,
-      });
-
-      toast.success(formatCurrency(amount) + " added to " + balanceInvestor.fullName + "!");
-      setBalanceInvestor(null);
-      setBalanceAmount("");
-      setBalanceProof(null);
-      setBalanceProofPreview("");
-    } catch (e: any) {
-      toast.error(e.message || "Balance add me masla aya");
-    } finally {
-      setBalanceSaving(false);
-    }
-  };
-
-  const handleDeleteInvestor = async (investor: Investor) => {
-    setDeletingId(investor.id);
-    try {
-      await addDoc(collection(db, "deleted_records"), {
-        originalId: investor.id,
-        type: "investors",
-        data: { ...investor },
-        deletedAt: new Date().toISOString(),
-        deletedBy: "admin",
-      });
-      await deleteDoc(doc(db, "investors", investor.id));
-      toast.success(investor.fullName + " delete ho gaya! (Trash me restore karein)");
-    } catch (e: any) {
-      toast.error(e.message || "Delete me masla aya");
-    } finally {
-      setDeletingId(null);
-    }
-  };
-
   const filteredInvestors = investors.filter(
     (inv) =>
       inv.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -244,15 +180,15 @@ export default function InvestorsPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">All Investors</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground">
             Manage investor accounts & track investments
           </p>
         </div>
         <Link href="/dashboard/investors/new">
-          <Button className="gap-2 gradient-primary">
+          <Button className="gap-2 gradient-primary shadow-lg shadow-primary/20">
             <Plus className="w-4 h-4" />
             Add Investor
           </Button>
@@ -260,21 +196,25 @@ export default function InvestorsPage() {
       </div>
 
       {/* Search */}
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search by name or phone..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-        />
-      </div>
+      <Card>
+        <CardContent className="p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or phone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Investors Grid */}
+      {/* Investor Cards */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <Card key={i}>
+            <Card key={i} className="animate-pulse">
               <CardContent className="p-6 space-y-4">
                 <Skeleton className="h-6 w-32" />
                 <Skeleton className="h-4 w-48" />
@@ -356,6 +296,21 @@ export default function InvestorsPage() {
                       </Badge>
                     </div>
                     <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Agreement Proof</span>
+                      {investor.agreementImage ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1.5 text-primary border-primary/30"
+                          onClick={() => setViewAgreementUrl(investor.agreementImage!)}
+                        >
+                          <Eye className="w-3 h-3" /> View Agreement
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">No agreement</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">Sharing Ratio</span>
                       <div className="flex items-center gap-1">
                         <Percent className="w-3 h-3 text-muted-foreground" />
@@ -364,6 +319,35 @@ export default function InvestorsPage() {
                         </span>
                       </div>
                     </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Card Action Buttons */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 text-xs font-semibold h-8"
+                      onClick={() => {
+                        setBalanceInvestor(investor);
+                        setAddAmount("");
+                        setAddNote("");
+                        setBalanceProofFile(null);
+                        setBalanceProofPreview("");
+                      }}
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add Balance
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                      onClick={() => handleSoftDelete(investor)}
+                      title="Move to Trash"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -508,5 +492,4 @@ export default function InvestorsPage() {
       </Dialog>
     </div>
   );
-
 }
