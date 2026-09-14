@@ -83,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         try {
           const userDocPromise = getDoc(doc(db, "users", firebaseUser.uid));
-          const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 5000));
+          const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 10000));
           const userDoc: any = await Promise.race([userDocPromise, timeoutPromise]).catch(() => null);
 
           if (userDoc && userDoc.exists()) {
@@ -202,7 +202,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // For all other users, check Firestore for their role
       const userDocPromise = getDoc(doc(db, "users", result.user.uid));
-      const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 5000));
+      const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 10000));
       const userDoc: any = await Promise.race([userDocPromise, timeoutPromise]).catch(() => null);
 
       if (userDoc && userDoc.exists()) {
@@ -261,7 +261,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Create user on secondary auth with 5s timeout
       const authPromise = createUserWithEmailAndPassword(secondaryAuth, email, password);
       const authTimeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Auth timeout")), 5000)
+        setTimeout(() => reject(new Error("Auth timeout")), 15000)
       );
       const result: any = await Promise.race([authPromise, authTimeout]);
 
@@ -281,7 +281,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const setPromise = setDoc(doc(db, "users", result.user.uid), newUser);
         const fsTimeout = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Firestore timeout")), 3000)
+          setTimeout(() => reject(new Error("Firestore timeout")), 10000)
         );
         await Promise.race([setPromise, fsTimeout]);
       } catch (fsErr) {

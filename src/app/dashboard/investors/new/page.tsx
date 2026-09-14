@@ -115,35 +115,32 @@ export default function AddInvestorPage() {
     setIsLoading(true);
 
     try {
-      // STEP 1: Create Auth Account (with 4s fallback so it never hangs)
-      let userId = "inv-" + Date.now();
+      // STEP 1: Create Auth Account (wait properly, 10s timeout)
+      let userId = "";
       try {
-        const authPromise = createAccount(email, password, {
+        userId = await createAccount(email, password, {
           email,
           fullName,
           phone,
           role: "investor",
           sharingRatio: parseInt(actualRatio),
         });
-        const timeoutPromise = new Promise<string>((resolve) =>
-          setTimeout(() => resolve("timeout-" + Date.now()), 4000)
-        );
-        const result = await Promise.race([authPromise, timeoutPromise]);
-        if (result && typeof result === "string" && !result.startsWith("timeout-")) {
-          userId = result;
-        }
       } catch (authErr: any) {
-        console.warn("Auth creation warning:", authErr);
+        console.error("Auth creation error:", authErr);
         if (authErr?.message?.includes("pehle se use")) {
           toast.error(authErr.message);
           setIsLoading(false);
           return;
         }
+        // For other auth errors, generate a fallback ID but continue
+        userId = "inv-" + Date.now();
+        console.warn("Using fallback userId:", userId);
       }
 
-      // STEP 2: Prepare investor document
+      if (!userId) userId = "inv-" + Date.now();
+
+      // STEP 2: Save investor to Firestore (MUST complete before showing success)
       const initialAmount = hasInitialInvestment ? parseFloat(investmentAmount) || 0 : 0;
-      const investorDocId = userId;
       const investorData: Record<string, any> = {
         userId,
         fullName,
@@ -159,89 +156,71 @@ export default function AddInvestorPage() {
         createdAt: new Date().toISOString(),
       };
 
-      // STEP 3: Save to Local Storage immediately for instant UI response
-      if (typeof window !== "undefined") {
-        const newInvObj = { id: investorDocId, ...investorData };
-        try {
-          const currentInv = localStorage.getItem("bm_cached_investors");
-          let list = [newInvObj];
-          if (currentInv) {
-            const parsed = JSON.parse(currentInv);
-            if (Array.isArray(parsed)) list = [newInvObj, ...parsed.filter((i: any) => i.id !== newInvObj.id)];
-          }
-          localStorage.setItem("bm_cached_investors", JSON.stringify(list));
-        } catch (e) {}
-      }
+      const docRef = await addDoc(collection(db, "investors"), investorData);
+      const investorDocId = docRef.id;
+      console.log("Investor saved to Firestore! DocID:", investorDocId);
 
-      // ✅ SUCCESS! Account is created - show success IMMEDIATELY
+      // STEP 3: Show success AFTER Firestore confirms
       toast.success(`${fullName} ka account ban gaya! ✅`);
       setStep("success");
       setIsLoading(false);
 
-      // STEP 4: Save to Firestore & Upload files in background non-blockingly
-      (async () => {
+      // STEP 4: Upload files in background (non-blocking, data is already saved)
+      // Agreement upload
+      if (agreementFile) {
         try {
-          await addDoc(collection(db, "investors"), investorData);
-        } catch (fsErr) {
-          console.warn("Firestore save warning (background):", fsErr);
+          const agreementRef = ref(storage, `agreements/investors/${investorDocId}_${Date.now()}`);
+          await uploadBytes(agreementRef, agreementFile);
+          const agreementUrl = await getDownloadURL(agreementRef);
+          const { updateDoc, doc: docFn } = await import("firebase/firestore");
+          await updateDoc(docFn(db, "investors", investorDocId), { agreementImage: agreementUrl });
+        } catch (e) {
+          console.warn("Agreement upload (background):", e);
         }
+      }
 
-        // Agreement upload
-        if (agreementFile) {
-          try {
-            const agreementRef = ref(storage, `agreements/investors/${investorDocId}_${Date.now()}`);
-            await uploadBytes(agreementRef, agreementFile);
-            const agreementUrl = await getDownloadURL(agreementRef);
-            const { updateDoc, doc } = await import("firebase/firestore");
-            await updateDoc(doc(db, "investors", investorDocId), { agreementImage: agreementUrl });
-          } catch (e) {
-            console.warn("Agreement upload (background):", e);
-          }
+      // Profile pic upload
+      if (profilePicFile) {
+        try {
+          const profileRef = ref(storage, `profiles/investors/${investorDocId}_${Date.now()}`);
+          await uploadBytes(profileRef, profilePicFile);
+          const profileImageUrl = await getDownloadURL(profileRef);
+          const { updateDoc, doc: docFn } = await import("firebase/firestore");
+          await updateDoc(docFn(db, "investors", investorDocId), { profileImage: profileImageUrl });
+        } catch (e) {
+          console.warn("Profile pic upload (background):", e);
         }
+      }
 
-        // Profile pic upload
-        if (profilePicFile) {
+      // Investment record + proof
+      if (hasInitialInvestment && initialAmount > 0) {
+        let proofUrl = "";
+        if (proofImage) {
           try {
-            const profileRef = ref(storage, `profiles/investors/${investorDocId}_${Date.now()}`);
-            await uploadBytes(profileRef, profilePicFile);
-            const profileImageUrl = await getDownloadURL(profileRef);
-            const { updateDoc, doc } = await import("firebase/firestore");
-            await updateDoc(doc(db, "investors", investorDocId), { profileImage: profileImageUrl });
+            const imageRef = ref(storage, `investments/${investorDocId}/${Date.now()}_proof`);
+            await uploadBytes(imageRef, proofImage);
+            proofUrl = await getDownloadURL(imageRef);
           } catch (e) {
-            console.warn("Profile pic upload (background):", e);
+            console.warn("Proof upload (background):", e);
           }
         }
-
-        // Investment record + proof
-        if (hasInitialInvestment && initialAmount > 0) {
-          let proofUrl = "";
-          if (proofImage) {
-            try {
-              const imageRef = ref(storage, `investments/${investorDocId}/${Date.now()}_proof`);
-              await uploadBytes(imageRef, proofImage);
-              proofUrl = await getDownloadURL(imageRef);
-            } catch (e) {
-              console.warn("Proof upload (background):", e);
-            }
-          }
-          try {
-            await addDoc(collection(db, "investments"), {
-              investorId: investorDocId,
-              investorName: fullName,
-              amount: initialAmount,
-              type: "initial",
-              ...(proofUrl ? { imageProof: proofUrl } : {}),
-              date: new Date().toISOString(),
-              note: "Initial investment",
-            });
-          } catch (e) {
-            console.warn("Investment record (background):", e);
-          }
+        try {
+          await addDoc(collection(db, "investments"), {
+            investorId: investorDocId,
+            investorName: fullName,
+            amount: initialAmount,
+            type: "initial",
+            ...(proofUrl ? { imageProof: proofUrl } : {}),
+            date: new Date().toISOString(),
+            note: "Initial investment",
+          });
+        } catch (e) {
+          console.warn("Investment record (background):", e);
         }
-      })();
+      }
     } catch (err: any) {
       console.error("Investor creation error:", err);
-      toast.error(err.message || "Account banane me masla aya");
+      toast.error(err.message || "Account banane me masla aya. Dubara try karein.");
       setIsLoading(false);
     }
   };
