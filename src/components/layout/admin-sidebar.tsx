@@ -26,10 +26,10 @@ import {
 
 const sidebarLinks = [
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { title: "All Customers", href: "/dashboard/customers", icon: Users },
   { title: "Users & Partners", href: "/dashboard/users", icon: UserCheck },
   { title: "All Investors", href: "/dashboard/investors", icon: Wallet },
   { title: "All Resellers", href: "/dashboard/resellers", icon: Handshake },
+  { title: "All Customers", href: "/dashboard/customers", icon: Users },
   { title: "Recovery", href: "/dashboard/recovery", icon: CreditCard },
   { title: "Notifications", href: "/dashboard/notifications", icon: Bell },
   { title: "Losses", href: "/dashboard/losses", icon: AlertTriangle },

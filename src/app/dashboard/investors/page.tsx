@@ -173,7 +173,6 @@ export default function InvestorsPage() {
   const filteredInvestors = investors.filter(
     (inv) =>
       inv.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (inv.cnic && inv.cnic.includes(searchQuery)) ||
       inv.phone.includes(searchQuery)
   );
 
@@ -258,6 +257,9 @@ export default function InvestorsPage() {
                   {/* Investor Name & Status */}
                   <div className="flex items-start justify-between">
                     <div>
+                      {investor.profileImage && (
+                        <img src={investor.profileImage} alt={investor.fullName} className="w-8 h-8 rounded-full object-cover border border-border/50 mb-1" />
+                      )}
                       <h3 className="font-semibold text-base group-hover:text-primary transition-colors">
                         {investor.fullName}
                       </h3>

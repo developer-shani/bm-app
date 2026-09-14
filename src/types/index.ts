@@ -28,6 +28,7 @@ export interface Investor {
   fullName: string;
   cnic?: string;
   agreementImage?: string;
+  profileImage?: string;
   phone: string;
   email: string;
   totalInvestment: number;
