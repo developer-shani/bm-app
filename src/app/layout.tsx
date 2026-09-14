@@ -31,7 +31,7 @@ export default function RootLayout({
               <TopLoader />
             </Suspense>
             {children}
-            <Toaster position="top-right" richColors closeButton />
+            <Toaster />
           </AuthProvider>
         </ThemeProvider>
       </body>
