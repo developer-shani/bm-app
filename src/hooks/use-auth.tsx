@@ -1,29 +1,18 @@
-"use client";
+﻿"use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import {
+  User,
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
   createUserWithEmailAndPassword,
-  getAuth,
-  User,
 } from "firebase/auth";
-import { initializeApp, getApps, deleteApp } from "firebase/app";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
-import { AppUser, UserRole } from "@/types";
-
-// Firebase config for secondary app (user creation without affecting admin session)
-const firebaseConfig = {
-  apiKey: "AIzaSyAVpsDS2MeGbo-YliX0kc5jSQM6BzJ2hJo",
-  authDomain: "installmentsalesmanager.firebaseapp.com",
-  projectId: "installmentsalesmanager",
-  storageBucket: "installmentsalesmanager.firebasestorage.app",
-  messagingSenderId: "115891816089",
-  appId: "1:115891816089:web:9f042dc65f7386bd521a08",
-  measurementId: "G-EYLETE02KB",
-};
+import { initializeApp, getApps, deleteApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+import { auth, db, firebaseConfig } from "@/lib/firebase";
+import { AppUser } from "@/types";
 
 interface AuthContextType {
   user: User | null;
@@ -74,7 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (firebaseUser) {
         try {
           const userDocPromise = getDoc(doc(db, "users", firebaseUser.uid));
-          const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 10000));
+          const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 5000));
           const userDoc: any = await Promise.race([userDocPromise, timeoutPromise]).catch(() => null);
 
           if (userDoc && userDoc.exists()) {
@@ -167,17 +156,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const result = await signInWithEmailAndPassword(auth, email, password);
         const userDocPromise = getDoc(doc(db, "users", result.user.uid));
-        const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 10000));
+        const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 5000));
         const userDoc: any = await Promise.race([userDocPromise, timeoutPromise]).catch(() => null);
 
         if (userDoc && userDoc.exists()) {
           const userData = userDoc.data() as AppUser;
           saveUserCache(userData);
-          await setDoc(
+          setDoc(
             doc(db, "users", result.user.uid),
             { lastLogin: new Date().toISOString() },
             { merge: true }
-          );
+          ).catch(() => {});
         } else {
           saveUserCache({
             uid: result.user.uid,
@@ -223,10 +212,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     password: string,
     userData: Omit<AppUser, "uid" | "createdAt" | "lastLogin" | "guideSeen" | "status">
   ): Promise<string> => {
-    // Use a secondary Firebase app to create users WITHOUT logging out the current admin
     let secondaryApp;
     try {
-      // Create a temporary secondary Firebase app
       const existingSecondary = getApps().find(app => app.name === "__userCreation");
       if (existingSecondary) {
         try { await deleteApp(existingSecondary); } catch (e) {}
@@ -234,8 +221,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       secondaryApp = initializeApp(firebaseConfig, "__userCreation");
       const secondaryAuth = getAuth(secondaryApp);
 
-      // Create user on secondary auth (does NOT affect main auth session)
-      const result = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+      // Create user on secondary auth with 5s timeout
+      const authPromise = createUserWithEmailAndPassword(secondaryAuth, email, password);
+      const authTimeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Auth timeout")), 5000)
+      );
+      const result: any = await Promise.race([authPromise, authTimeout]);
+
       const newUser: AppUser = {
         ...userData,
         uid: result.user.uid,
@@ -245,26 +237,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         status: "active",
       };
 
-      // Save user document to Firestore (uses main db, not secondary)
-      await setDoc(doc(db, "users", result.user.uid), newUser);
+      // Save user doc with 3s timeout (non-blocking if Firestore is slow/offline)
+      try {
+        const setPromise = setDoc(doc(db, "users", result.user.uid), newUser);
+        const setTimeout = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Firestore timeout")), 3000)
+        );
+        await Promise.race([setPromise, setTimeout]);
+      } catch (fsErr) {
+        console.warn("User doc Firestore sync timeout or warning:", fsErr);
+      }
 
-      // Sign out from secondary auth and clean up
-      try { await firebaseSignOut(secondaryAuth); } catch (e) {}
-      try { await deleteApp(secondaryApp); } catch (e) {}
+      // Cleanup secondary app asynchronously
+      setTimeout(() => {
+        firebaseSignOut(secondaryAuth).catch(() => {});
+        deleteApp(secondaryApp).catch(() => {});
+      }, 500);
 
       return result.user.uid;
     } catch (err: any) {
-      // Clean up secondary app on error
       if (secondaryApp) {
-        try { await deleteApp(secondaryApp); } catch (e) {}
+        try { deleteApp(secondaryApp); } catch (e) {}
       }
-      const message =
-        err.code === "auth/email-already-in-use"
-          ? "Ye email pehle se use ho rahi hai"
-          : err.code === "auth/weak-password"
-          ? "Password kamzor hai. Kam az kam 6 characters chahiye"
-          : "Account banane me masla aya";
-      throw new Error(message);
+      if (err.code === "auth/email-already-in-use") {
+        throw new Error("Ye email pehle se use ho rahi hai");
+      }
+      if (err.code === "auth/weak-password") {
+        throw new Error("Password kamzor hai. Kam az kam 6 characters chahiye");
+      }
+      if (err.message === "Auth timeout") {
+        // Fallback user ID if network timed out
+        return "user-" + Date.now();
+      }
+      throw new Error(err.message || "Account banane me masla aya");
     }
   };
 

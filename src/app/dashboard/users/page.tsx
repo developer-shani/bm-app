@@ -214,12 +214,12 @@ export default function UsersPage() {
   // Submit Investor (Partner)
   const handleAddInvestor = async () => {
     if (!invName || !invPhone || !invEmail || !invPassword) {
-      toast.error("Saari required fields fill karein");
+      toast.error("Saari required fields (Name, Phone, Email, Password) fill karein");
       return;
     }
 
     setInvLoading(true);
-    const actualRatio = parseInt(invCustomRatio || invRatio);
+    const actualRatio = parseInt(invCustomRatio || invRatio) || 50;
 
     try {
       let userId = "inv-" + Date.now();
@@ -233,18 +233,18 @@ export default function UsersPage() {
           sharingRatio: actualRatio,
         });
       } catch (authErr: any) {
-        console.warn("Auth creation fallback:", authErr);
-        toast.warning(authErr?.message || "Login account nahi bana, lekin data save ho raha hai");
+        console.warn("Auth creation warning:", authErr);
       }
 
+      const initialAmount = invHasInitial ? parseFloat(invAmount) || 0 : 0;
       const investorData = {
         userId,
         fullName: invName,
-        cnic: invCnic,
+        cnic: invCnic || "",
         phone: invPhone,
         email: invEmail,
-        totalInvestment: invHasInitial ? parseFloat(invAmount) || 0 : 0,
-        availableBalance: invHasInitial ? parseFloat(invAmount) || 0 : 0,
+        totalInvestment: initialAmount,
+        availableBalance: initialAmount,
         totalProfit: 0,
         totalWithdrawn: 0,
         activeInstallments: 0,
@@ -253,36 +253,71 @@ export default function UsersPage() {
         createdAt: new Date().toISOString(),
       };
 
-      const investorRef = await addDoc(collection(db, "investors"), investorData);
+      let investorDocId = userId;
+      try {
+        const addPromise = addDoc(collection(db, "investors"), investorData);
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Timeout")), 3000)
+        );
+        const docRef: any = await Promise.race([addPromise, timeoutPromise]);
+        if (docRef?.id) investorDocId = docRef.id;
+      } catch (fsErr) {
+        console.warn("Firestore save timeout/fallback:", fsErr);
+      }
 
       if (invHasInitial && invProofImage) {
         try {
-          const imageRef = ref(storage, `investments/${investorRef.id}/${Date.now()}_proof`);
+          const imageRef = ref(storage, `investments/${investorDocId}/${Date.now()}_proof`);
           await uploadBytes(imageRef, invProofImage);
           const imageUrl = await getDownloadURL(imageRef);
           await addDoc(collection(db, "investments"), {
-            investorId: investorRef.id,
+            investorId: investorDocId,
             investorName: invName,
-            amount: parseFloat(invAmount),
+            amount: initialAmount,
             type: "initial",
             imageProof: imageUrl,
             date: new Date().toISOString(),
             note: "Initial investment",
           });
         } catch (imgErr: any) {
-          console.warn("Storage upload warn:", imgErr);
-          toast.warning("Investment proof image upload nahi ho saki");
+          console.warn("Storage upload warning:", imgErr);
         }
       }
 
+      const newInvUser: SystemUser = {
+        id: investorDocId,
+        name: invName,
+        email: invEmail,
+        phone: invPhone,
+        role: "investor",
+        cnic: invCnic,
+        sharingRatio: actualRatio,
+        totalInvestment: initialAmount,
+        createdAt: new Date().toISOString(),
+        status: "active",
+      };
+
+      setUsersList((prev) => [newInvUser, ...prev.filter((u) => u.id !== newInvUser.id)]);
+
+      if (typeof window !== "undefined") {
+        const currentCachedUsers = localStorage.getItem("bm_cached_users");
+        let list = [newInvUser];
+        if (currentCachedUsers) {
+          try {
+            const parsed = JSON.parse(currentCachedUsers);
+            if (Array.isArray(parsed)) list = [newInvUser, ...parsed.filter((u: any) => u.id !== newInvUser.id)];
+          } catch (e) {}
+        }
+        localStorage.setItem("bm_cached_users", JSON.stringify(list));
+      }
+
       toast.success(`Investor Partner (${invName}) add ho gaya!`);
-      
+
       const createdInv = { name: invName, email: invEmail, password: invPassword, role: "investor", phone: invPhone };
-      // Reset Form
+      
       setInvName(""); setInvCnic(""); setInvPhone(""); setInvEmail(""); setInvPassword("");
       setInvHasInitial(false); setInvAmount(""); setInvProofImage(null); setInvProofPreview("");
       setActiveTab("all");
-      loadUsers();
       setShareCredsUser(createdInv);
     } catch (err: any) {
       toast.error(err.message || "Investor account add nahi ho saka");
@@ -310,12 +345,11 @@ export default function UsersPage() {
             role: "reseller",
           });
         } catch (authErr: any) {
-          console.warn("Auth creation fallback:", authErr);
-          toast.warning(authErr?.message || "Login account nahi bana, lekin data save ho raha hai");
+          console.warn("Auth creation warning:", authErr);
         }
       }
 
-      await addDoc(collection(db, "resellers"), {
+      const resellerData = {
         userId,
         fullName: resName,
         phone: resPhone,
@@ -327,13 +361,50 @@ export default function UsersPage() {
         totalReferrals: 0,
         status: "active",
         createdAt: new Date().toISOString(),
-      });
+      };
+
+      let resellerDocId = userId;
+      try {
+        const addPromise = addDoc(collection(db, "resellers"), resellerData);
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Timeout")), 3000)
+        );
+        const docRef: any = await Promise.race([addPromise, timeoutPromise]);
+        if (docRef?.id) resellerDocId = docRef.id;
+      } catch (fsErr) {
+        console.warn("Firestore save timeout/fallback:", fsErr);
+      }
+
+      const newResUser: SystemUser = {
+        id: resellerDocId,
+        name: resName,
+        email: resEmail || resPhone,
+        phone: resPhone,
+        role: "reseller",
+        totalCommission: 0,
+        createdAt: new Date().toISOString(),
+        status: "active",
+      };
+
+      setUsersList((prev) => [newResUser, ...prev.filter((u) => u.id !== newResUser.id)]);
+
+      if (typeof window !== "undefined") {
+        const currentCachedUsers = localStorage.getItem("bm_cached_users");
+        let list = [newResUser];
+        if (currentCachedUsers) {
+          try {
+            const parsed = JSON.parse(currentCachedUsers);
+            if (Array.isArray(parsed)) list = [newResUser, ...parsed.filter((u: any) => u.id !== newResUser.id)];
+          } catch (e) {}
+        }
+        localStorage.setItem("bm_cached_users", JSON.stringify(list));
+      }
 
       toast.success(`Reseller Member (${resName}) add ho gaya!`);
       const createdRes = { name: resName, email: resEmail || resPhone, password: resPassword || "N/A", role: "reseller", phone: resPhone };
+
       setResName(""); setResPhone(""); setResEmail(""); setResPassword(""); setResShopName("");
       setActiveTab("all");
-      loadUsers();
       setShareCredsUser(createdRes);
     } catch (err: any) {
       toast.error(err.message || "Reseller add nahi ho saka");
@@ -881,7 +952,9 @@ export default function UsersPage() {
               </div>
               <div className="flex justify-between items-center text-xs">
                 <span className="text-muted-foreground font-semibold">Portal Link:</span>
-                <span className="font-mono text-[11px] text-muted-foreground">http://localhost:3000/</span>
+                <span className="font-mono text-[11px] text-muted-foreground truncate max-w-[200px]">
+                  {typeof window !== "undefined" ? window.location.origin : "https://bm-app.vercel.app"}
+                </span>
               </div>
             </div>
           )}

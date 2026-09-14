@@ -1,4 +1,7 @@
-"use client";
+﻿import os
+
+# File 1: sonner.tsx
+sonner_content = """"use client";
 
 import { Toaster as Sonner } from "sonner";
 import { useTheme } from "next-themes";
@@ -36,3 +39,10 @@ const Toaster = ({ ...props }: ToasterProps) => {
 };
 
 export { Toaster };
+"""
+
+with open("src/components/ui/sonner.tsx", "w", encoding="utf-8") as f:
+    f.write(sonner_content)
+
+print("1. sonner.tsx updated!")
+

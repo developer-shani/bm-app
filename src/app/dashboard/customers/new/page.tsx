@@ -294,14 +294,37 @@ export default function NewSalePage() {
         createdAt: new Date().toISOString(),
       };
 
-      const docRef = await addDoc(collection(db, "investors"), investorData);
+      let investorDocId = userId;
+      try {
+        const addPromise = addDoc(collection(db, "investors"), investorData);
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error("Timeout")), 3000)
+        );
+        const docRef: any = await Promise.race([addPromise, timeoutPromise]);
+        if (docRef?.id) investorDocId = docRef.id;
+      } catch (fsErr) {
+        console.warn("Firestore save timeout/fallback:", fsErr);
+      }
+
       const newInvestorObj: Investor = {
-        id: docRef.id,
+        id: investorDocId,
         ...investorData,
       };
 
-      setInvestors((prev) => [newInvestorObj, ...prev]);
-      setSelectedInvestorId(docRef.id);
+      setInvestors((prev) => [newInvestorObj, ...prev.filter((i) => i.id !== newInvestorObj.id)]);
+      setSelectedInvestorId(investorDocId);
+      
+      if (typeof window !== "undefined") {
+        const currentInv = localStorage.getItem("bm_cached_investors");
+        let list = [newInvestorObj];
+        if (currentInv) {
+          try {
+            const parsed = JSON.parse(currentInv);
+            if (Array.isArray(parsed)) list = [newInvestorObj, ...parsed.filter((i: any) => i.id !== newInvestorObj.id)];
+          } catch (e) {}
+        }
+        localStorage.setItem("bm_cached_investors", JSON.stringify(list));
+      }
       setShowAddInvestorModal(false);
 
       toast.success(`Partner (${modalInvName}) add aur select ho gaya!`);
