@@ -1,4 +1,6 @@
-﻿"use client";
+"use client";
+
+const SUPER_ADMIN_UID = "EtIGZIxms6hrS5uR96fmxksjEDv1";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import {
@@ -61,6 +63,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
       if (firebaseUser) {
+        // Super Admin Owner UID check -> Always grant Full Admin Access
+        if (firebaseUser.uid === SUPER_ADMIN_UID) {
+          const ownerUser: AppUser = {
+            uid: firebaseUser.uid,
+            name: firebaseUser.displayName || "Gulshaan Khan (Owner)",
+            email: firebaseUser.email || "gulshaankhan2@gmail.com",
+            role: "admin",
+            status: "active",
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString(),
+            guideSeen: true,
+          };
+          saveUserCache(ownerUser);
+          setDoc(doc(db, "users", firebaseUser.uid), ownerUser, { merge: true }).catch(() => {});
+          setLoading(false);
+          return;
+        }
+
         try {
           const userDocPromise = getDoc(doc(db, "users", firebaseUser.uid));
           const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 5000));
@@ -68,10 +88,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           if (userDoc && userDoc.exists()) {
             const userData = userDoc.data() as AppUser;
-            setAppUser(userData);
-            if (typeof window !== "undefined") {
-              localStorage.setItem("bm_app_user", JSON.stringify(userData));
-            }
+            saveUserCache(userData);
+          } else {
+            saveUserCache({
+              uid: firebaseUser.uid,
+              name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "Admin User",
+              email: firebaseUser.email || "",
+              role: "admin",
+              status: "active",
+              createdAt: new Date().toISOString(),
+              lastLogin: new Date().toISOString(),
+              guideSeen: true,
+            });
           }
         } catch (err) {
           console.error("Error fetching user data:", err);
@@ -155,6 +183,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       try {
         const result = await signInWithEmailAndPassword(auth, email, password);
+        if (result.user.uid === SUPER_ADMIN_UID) {
+          const ownerUser: AppUser = {
+            uid: result.user.uid,
+            name: result.user.displayName || "Gulshaan Khan (Owner)",
+            email: result.user.email || email,
+            role: "admin",
+            status: "active",
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString(),
+            guideSeen: true,
+          };
+          saveUserCache(ownerUser);
+          setDoc(doc(db, "users", result.user.uid), ownerUser, { merge: true }).catch(() => {});
+          setLoading(false);
+          return;
+        }
         const userDocPromise = getDoc(doc(db, "users", result.user.uid));
         const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 5000));
         const userDoc: any = await Promise.race([userDocPromise, timeoutPromise]).catch(() => null);
