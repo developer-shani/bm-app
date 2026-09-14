@@ -20,7 +20,7 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy, onSnapshot } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, addDoc } from "firebase/firestore";
 import { Investor } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 
@@ -62,6 +62,79 @@ export default function InvestorsPage() {
 
     return () => unsubscribe();
   }, []);
+
+
+  const [balanceInvestor, setBalanceInvestor] = useState<Investor | null>(null);
+  const [balanceAmount, setBalanceAmount] = useState("");
+  const [balanceProof, setBalanceProof] = useState<File | null>(null);
+  const [balanceProofPreview, setBalanceProofPreview] = useState("");
+  const [balanceSaving, setBalanceSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleAddBalance = async () => {
+    if (!balanceInvestor || !balanceAmount) {
+      toast.error("Amount zaruri hai");
+      return;
+    }
+    setBalanceSaving(true);
+    try {
+      const amount = parseFloat(balanceAmount);
+      let proofUrl = "";
+      if (balanceProof) {
+        const storageRef = ref(storage, "investments/" + Date.now() + "_" + balanceProof.name);
+        await uploadBytes(storageRef, balanceProof);
+        proofUrl = await getDownloadURL(storageRef);
+      }
+
+      // Add investment record
+      await addDoc(collection(db, "investments"), {
+        investorId: balanceInvestor.id,
+        investorName: balanceInvestor.fullName,
+        amount,
+        type: "additional",
+        imageProof: proofUrl,
+        date: new Date().toISOString(),
+        note: "Balance added by admin",
+      });
+
+      // Update investor balance
+      const newTotal = (balanceInvestor.totalInvestment || 0) + amount;
+      const newAvailable = (balanceInvestor.availableBalance || 0) + amount;
+      await updateDoc(doc(db, "investors", balanceInvestor.id), {
+        totalInvestment: newTotal,
+        availableBalance: newAvailable,
+      });
+
+      toast.success(formatCurrency(amount) + " added to " + balanceInvestor.fullName + "!");
+      setBalanceInvestor(null);
+      setBalanceAmount("");
+      setBalanceProof(null);
+      setBalanceProofPreview("");
+    } catch (e: any) {
+      toast.error(e.message || "Balance add me masla aya");
+    } finally {
+      setBalanceSaving(false);
+    }
+  };
+
+  const handleDeleteInvestor = async (investor: Investor) => {
+    setDeletingId(investor.id);
+    try {
+      await addDoc(collection(db, "deleted_records"), {
+        originalId: investor.id,
+        type: "investors",
+        data: { ...investor },
+        deletedAt: new Date().toISOString(),
+        deletedBy: "admin",
+      });
+      await deleteDoc(doc(db, "investors", investor.id));
+      toast.success(investor.fullName + " delete ho gaya! (Trash me restore karein)");
+    } catch (e: any) {
+      toast.error(e.message || "Delete me masla aya");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const filteredInvestors = investors.filter(
     (inv) =>

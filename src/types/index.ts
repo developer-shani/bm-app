@@ -8,8 +8,8 @@ export interface AppUser {
   uid: string;
   email: string;
   fullName: string;
-  cnic: string;
-  phone: string;
+  cnic?: string;
+  phone?: string;
   role: UserRole;
   sharingRatio: number; // e.g. 50 means 50% for investor, 50% for admin
   status: "active" | "inactive";
@@ -210,4 +210,32 @@ export interface DashboardStats {
   overdueCount: number;
   dueSoonCount: number;
   monthlyCollections: number;
+}
+
+// ============================================
+// PROFILE CHANGE REQUEST (Pending Approval)
+// ============================================
+export interface ProfileChangeRequest {
+  id: string;
+  userId: string;
+  userName: string;
+  userRole: UserRole;
+  changes: Record<string, { old: string; new: string }>;
+  newProfileImage?: string;
+  status: "pending" | "approved" | "rejected";
+  submittedAt: string;
+  processedAt?: string;
+  processedBy?: string;
+}
+
+// ============================================
+// DELETED RECORD (Soft Delete / Trash)
+// ============================================
+export interface DeletedRecord {
+  id: string;
+  originalId: string;
+  type: "customers" | "investors" | "resellers" | "users";
+  data: Record<string, any>;
+  deletedAt: string;
+  deletedBy: string;
 }

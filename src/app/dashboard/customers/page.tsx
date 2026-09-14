@@ -30,9 +30,10 @@ import {
   Clock,
   CheckCircle2,
   CreditCard,
+  Trash2,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy, onSnapshot } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, onSnapshot , doc, deleteDoc, addDoc } from "firebase/firestore";
 import { Customer } from "@/types";
 import { formatCurrency, formatDate, getDaysOverdue, getInstallmentStatus } from "@/lib/utils";
 import { generateSmsMessage } from "@/lib/calculations";

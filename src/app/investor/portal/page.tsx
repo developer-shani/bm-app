@@ -43,6 +43,8 @@ import {
   CreditCard,
   DollarSign,
   PieChart,
+  UserCog,
+  User,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
@@ -215,6 +217,34 @@ export default function InvestorPortalPage() {
       )
     : null;
 
+
+  const handleProfileSubmit = async () => {
+    if (!appUser) return;
+    setProfileLoading(true);
+    try {
+      await addDoc(collection(db, "pending_approvals"), {
+        userId: appUser.uid,
+        userName: editName || investor?.fullName || appUser.fullName,
+        userRole: "investor",
+        changes: {
+          ...(editName && editName !== (investor?.fullName || appUser.fullName) ? { fullName: { old: investor?.fullName || "", new: editName } } : {}),
+          ...(editPhone && editPhone !== investor?.phone ? { phone: { old: investor?.phone || "", new: editPhone } } : {}),
+        },
+        newProfileImage: editPhotoUrl || undefined,
+        status: "pending",
+        submittedAt: new Date().toISOString(),
+        collectionName: "investors",
+        docId: investor?.id,
+      });
+      toast.success("Profile update request submitted for admin approval!");
+      setShowProfileEdit(false);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit request");
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -252,6 +282,21 @@ export default function InvestorPortalPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => {
+                setEditName(investor?.fullName || appUser?.fullName || "");
+                setEditPhone(investor?.phone || appUser?.phone || "");
+                setEditPhotoUrl(appUser?.profileImage || "");
+                setShowProfileEdit(true);
+              }}
+            >
+              <UserCog className="w-4 h-4" /> Edit Profile
+            </Button>
+
             <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setShowGuide(true)}>
               <Info className="w-4 h-4" />
             </Button>
@@ -593,7 +638,59 @@ export default function InvestorPortalPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Edit Profile Dialog */}
+      <Dialog open={showProfileEdit} onOpenChange={setShowProfileEdit}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCog className="w-5 h-5 text-primary" /> Edit Profile
+            </DialogTitle>
+            <DialogDescription>
+              Update your profile details. Admin approval is required for changes.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Full Name</Label>
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Enter full name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone Number</Label>
+              <Input
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value)}
+                placeholder="0300 1234567"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Profile Picture URL (DP)</Label>
+              <Input
+                value={editPhotoUrl}
+                onChange={(e) => setEditPhotoUrl(e.target.value)}
+                placeholder="https://example.com/photo.jpg"
+              />
+              {editPhotoUrl && (
+                <div className="flex items-center gap-3 pt-2">
+                  <img src={editPhotoUrl} alt="Preview" className="w-12 h-12 rounded-full object-cover border" />
+                  <span className="text-xs text-muted-foreground">Avatar Preview</span>
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowProfileEdit(false)}>Cancel</Button>
+            <Button onClick={handleProfileSubmit} disabled={profileLoading}>
+              {profileLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Submit for Approval
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-}
 
+}

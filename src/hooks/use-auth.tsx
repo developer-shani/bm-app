@@ -26,7 +26,7 @@ interface AuthContextType {
   createAccount: (
     email: string,
     password: string,
-    userData: Omit<AppUser, "uid" | "createdAt" | "lastLogin" | "guideSeen" | "status">
+    userData: Partial<AppUser>
   ) => Promise<string>;
 }
 
@@ -67,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (firebaseUser.uid === SUPER_ADMIN_UID) {
           const ownerUser: AppUser = {
             uid: firebaseUser.uid,
-            name: firebaseUser.displayName || "Gulshaan Khan (Owner)",
+            fullName: firebaseUser.displayName || "Gulshaan Khan (Owner)",
             email: firebaseUser.email || "gulshaankhan2@gmail.com",
             role: "admin",
             status: "active",
@@ -90,21 +90,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const userData = userDoc.data() as AppUser;
             saveUserCache(userData);
           } else {
-            saveUserCache({
-              uid: firebaseUser.uid,
-              name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "Admin User",
-              email: firebaseUser.email || "",
-              role: "admin",
-              status: "active",
-              createdAt: new Date().toISOString(),
-              lastLogin: new Date().toISOString(),
-              guideSeen: true,
-            });
+            // NO default admin fallback — user must have a Firestore doc created by admin
+            setError("Aapka account setup nahi hua. Admin se sampark karein.");
+            saveUserCache(null);
+            try { await firebaseSignOut(auth); } catch (e) {}
           }
         } catch (err) {
           console.error("Error fetching user data:", err);
+          setError("Login me masla aya. Dubara try karein.");
+          saveUserCache(null);
         }
       } else {
+        // Check for demo user in cache
         const cached = typeof window !== "undefined" ? localStorage.getItem("bm_app_user") : null;
         let isDemo = false;
         if (cached) {
@@ -135,10 +132,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const lowerEmail = email.toLowerCase().trim();
 
+      // Demo logins for testing (admin demo only)
       if (lowerEmail === "admin@brothermobiles.com" || lowerEmail === "admin") {
         const u: AppUser = {
           uid: "demo-admin-uid",
-          name: "Admin Brother Mobiles",
+          fullName: "Admin Brother Mobiles",
           email: "admin@brothermobiles.com",
           role: "admin",
           status: "active",
@@ -153,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (lowerEmail === "investor@brothermobiles.com" || lowerEmail === "investor") {
         const u: AppUser = {
           uid: "demo-investor-uid",
-          name: "Haji Sb (Investor)",
+          fullName: "Haji Sb (Investor)",
           email: "investor@brothermobiles.com",
           role: "investor",
           status: "active",
@@ -168,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (lowerEmail === "reseller@brothermobiles.com" || lowerEmail === "reseller") {
         const u: AppUser = {
           uid: "demo-reseller-uid",
-          name: "Ali Reseller",
+          fullName: "Ali Reseller",
           email: "reseller@brothermobiles.com",
           role: "reseller",
           status: "active",
@@ -181,62 +179,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      try {
-        const result = await signInWithEmailAndPassword(auth, email, password);
-        if (result.user.uid === SUPER_ADMIN_UID) {
-          const ownerUser: AppUser = {
-            uid: result.user.uid,
-            name: result.user.displayName || "Gulshaan Khan (Owner)",
-            email: result.user.email || email,
-            role: "admin",
-            status: "active",
-            createdAt: new Date().toISOString(),
-            lastLogin: new Date().toISOString(),
-            guideSeen: true,
-          };
-          saveUserCache(ownerUser);
-          setDoc(doc(db, "users", result.user.uid), ownerUser, { merge: true }).catch(() => {});
-          setLoading(false);
-          return;
-        }
-        const userDocPromise = getDoc(doc(db, "users", result.user.uid));
-        const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 5000));
-        const userDoc: any = await Promise.race([userDocPromise, timeoutPromise]).catch(() => null);
-
-        if (userDoc && userDoc.exists()) {
-          const userData = userDoc.data() as AppUser;
-          saveUserCache(userData);
-          setDoc(
-            doc(db, "users", result.user.uid),
-            { lastLogin: new Date().toISOString() },
-            { merge: true }
-          ).catch(() => {});
-        } else {
-          saveUserCache({
-            uid: result.user.uid,
-            name: result.user.displayName || "Admin User",
-            email: result.user.email || email,
-            role: "admin",
-            status: "active",
-            createdAt: new Date().toISOString(),
-            lastLogin: new Date().toISOString(),
-            guideSeen: true
-          });
-        }
-      } catch (fbErr: any) {
-        saveUserCache({
-          uid: "demo-user-" + Date.now(),
-          name: email.split("@")[0].toUpperCase() || "Admin User",
-          email: email,
-          role: email.includes("investor") ? "investor" : email.includes("reseller") ? "reseller" : "admin",
+      // Real Firebase Auth login
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Super Admin always gets full access
+      if (result.user.uid === SUPER_ADMIN_UID) {
+        const ownerUser: AppUser = {
+          uid: result.user.uid,
+          fullName: result.user.displayName || "Gulshaan Khan (Owner)",
+          email: result.user.email || email,
+          role: "admin",
           status: "active",
           createdAt: new Date().toISOString(),
           lastLogin: new Date().toISOString(),
-          guideSeen: true
-        });
+          guideSeen: true,
+        };
+        saveUserCache(ownerUser);
+        setDoc(doc(db, "users", result.user.uid), ownerUser, { merge: true }).catch(() => {});
+        setLoading(false);
+        return;
+      }
+
+      // For all other users, check Firestore for their role
+      const userDocPromise = getDoc(doc(db, "users", result.user.uid));
+      const timeoutPromise = new Promise<never>((_, reject) => setTimeout(() => reject("timeout"), 5000));
+      const userDoc: any = await Promise.race([userDocPromise, timeoutPromise]).catch(() => null);
+
+      if (userDoc && userDoc.exists()) {
+        const userData = userDoc.data() as AppUser;
+        saveUserCache(userData);
+        setDoc(
+          doc(db, "users", result.user.uid),
+          { lastLogin: new Date().toISOString() },
+          { merge: true }
+        ).catch(() => {});
+      } else {
+        // User exists in Firebase Auth but NOT in Firestore
+        // Do NOT give admin access — tell them to contact admin
+        setError("Aapka account abhi setup nahi hua. Admin se sampark karein.");
+        try { await firebaseSignOut(auth); } catch (e) {}
+        saveUserCache(null);
       }
     } catch (err: any) {
-      const message = "Login me masla aya. Dubara try karein";
+      const code = err?.code || "";
+      let message = "Login me masla aya. Dubara try karein.";
+      if (code === "auth/user-not-found" || code === "auth/invalid-credential") {
+        message = "Email ya password ghalat hai.";
+      } else if (code === "auth/wrong-password") {
+        message = "Password ghalat hai.";
+      } else if (code === "auth/too-many-requests") {
+        message = "Bohot zyada attempts. Thodi der baad try karein.";
+      }
       setError(message);
       throw new Error(message);
     } finally {
@@ -254,7 +247,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const createAccount = async (
     email: string,
     password: string,
-    userData: Omit<AppUser, "uid" | "createdAt" | "lastLogin" | "guideSeen" | "status">
+    userData: Partial<AppUser>
   ): Promise<string> => {
     let secondaryApp;
     try {
@@ -273,21 +266,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const result: any = await Promise.race([authPromise, authTimeout]);
 
       const newUser: AppUser = {
-        ...userData,
         uid: result.user.uid,
+        fullName: userData.fullName || "",
+        email: userData.email || email,
+        phone: userData.phone || "",
+        role: userData.role || "investor",
+        status: "active",
         createdAt: new Date().toISOString(),
         lastLogin: "",
         guideSeen: false,
-        status: "active",
       };
 
-      // Save user doc with 3s timeout (non-blocking if Firestore is slow/offline)
+      // Save user doc with 3s timeout
       try {
         const setPromise = setDoc(doc(db, "users", result.user.uid), newUser);
-        const setTimeout = new Promise<never>((_, reject) =>
+        const fsTimeout = new Promise<never>((_, reject) =>
           setTimeout(() => reject(new Error("Firestore timeout")), 3000)
         );
-        await Promise.race([setPromise, setTimeout]);
+        await Promise.race([setPromise, fsTimeout]);
       } catch (fsErr) {
         console.warn("User doc Firestore sync timeout or warning:", fsErr);
       }
@@ -310,7 +306,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Password kamzor hai. Kam az kam 6 characters chahiye");
       }
       if (err.message === "Auth timeout") {
-        // Fallback user ID if network timed out
         return "user-" + Date.now();
       }
       throw new Error(err.message || "Account banane me masla aya");

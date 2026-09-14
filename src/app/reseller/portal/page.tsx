@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -27,13 +29,17 @@ import {
   Moon,
   Info,
   IndianRupee,
+  UserCog,
+  User,
+  Loader2,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
+import { collection, getDocs, query, where, orderBy, addDoc, onSnapshot } from "firebase/firestore";
 import { Reseller, Customer } from "@/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { toast } from "sonner";
 
 export default function ResellerPortalPage() {
   const { appUser, signOut } = useAuth();
@@ -44,6 +50,13 @@ export default function ResellerPortalPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showGuide, setShowGuide] = useState(false);
+
+  const [showProfileEdit, setShowProfileEdit] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editPhotoUrl, setEditPhotoUrl] = useState("");
+  const [profileLoading, setProfileLoading] = useState(false);
+
 
   useEffect(() => {
     if (!appUser) {
@@ -71,6 +84,34 @@ export default function ResellerPortalPage() {
 
     return () => unsubRes();
   }, [appUser, router]);
+
+
+  const handleProfileSubmit = async () => {
+    if (!appUser) return;
+    setProfileLoading(true);
+    try {
+      await addDoc(collection(db, "pending_approvals"), {
+        userId: appUser.uid,
+        userName: editName || reseller?.fullName || appUser.fullName,
+        userRole: "reseller",
+        changes: {
+          ...(editName && editName !== (reseller?.fullName || appUser.fullName) ? { fullName: { old: reseller?.fullName || "", new: editName } } : {}),
+          ...(editPhone && editPhone !== reseller?.phone ? { phone: { old: reseller?.phone || "", new: editPhone } } : {}),
+        },
+        newProfileImage: editPhotoUrl || undefined,
+        status: "pending",
+        submittedAt: new Date().toISOString(),
+        collectionName: "resellers",
+        docId: reseller?.id,
+      });
+      toast.success("Profile update request submitted for admin approval!");
+      setShowProfileEdit(false);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to submit request");
+    } finally {
+      setProfileLoading(false);
+    }
+  };
 
   const totalCommission = customers.reduce((sum, c) => sum + c.referralCommissionAmount, 0);
   const expectedCommission = customers
@@ -103,6 +144,21 @@ export default function ResellerPortalPage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => {
+                setEditName(reseller?.fullName || appUser?.fullName || "");
+                setEditPhone(reseller?.phone || appUser?.phone || "");
+                setEditPhotoUrl(appUser?.profileImage || "");
+                setShowProfileEdit(true);
+              }}
+            >
+              <UserCog className="w-4 h-4" /> Edit Profile
+            </Button>
+
             <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setShowGuide(true)}>
               <Info className="w-4 h-4" />
             </Button>
@@ -233,7 +289,59 @@ export default function ResellerPortalPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Edit Profile Dialog */}
+      <Dialog open={showProfileEdit} onOpenChange={setShowProfileEdit}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserCog className="w-5 h-5 text-primary" /> Edit Profile
+            </DialogTitle>
+            <DialogDescription>
+              Update your profile details. Admin approval is required for changes.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Full Name</Label>
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Enter full name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Phone Number</Label>
+              <Input
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value)}
+                placeholder="0300 1234567"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Profile Picture URL (DP)</Label>
+              <Input
+                value={editPhotoUrl}
+                onChange={(e) => setEditPhotoUrl(e.target.value)}
+                placeholder="https://example.com/photo.jpg"
+              />
+              {editPhotoUrl && (
+                <div className="flex items-center gap-3 pt-2">
+                  <img src={editPhotoUrl} alt="Preview" className="w-12 h-12 rounded-full object-cover border" />
+                  <span className="text-xs text-muted-foreground">Avatar Preview</span>
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowProfileEdit(false)}>Cancel</Button>
+            <Button onClick={handleProfileSubmit} disabled={profileLoading}>
+              {profileLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Submit for Approval
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
-}
 
+}

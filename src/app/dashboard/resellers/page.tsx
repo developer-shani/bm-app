@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Handshake, Plus, Search, Phone } from "lucide-react";
+import { Handshake, Plus, Search, Phone, Trash2, Loader2 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy, onSnapshot } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, onSnapshot, doc, deleteDoc, addDoc } from "firebase/firestore";
+import { toast } from "sonner";
 import { Reseller } from "@/types";
 import { formatCurrency } from "@/lib/utils";
 
@@ -52,6 +53,28 @@ export default function ResellersPage() {
 
     return () => unsubscribe();
   }, []);
+
+
+  const [deletingResId, setDeletingResId] = useState<string | null>(null);
+
+  const handleDeleteReseller = async (reseller: Reseller) => {
+    setDeletingResId(reseller.id);
+    try {
+      await addDoc(collection(db, "deleted_records"), {
+        originalId: reseller.id,
+        type: "resellers",
+        data: { ...reseller },
+        deletedAt: new Date().toISOString(),
+        deletedBy: "admin",
+      });
+      await deleteDoc(doc(db, "resellers", reseller.id));
+      toast.success(reseller.fullName + " delete ho gaya! (Trash me restore karein)");
+    } catch (e: any) {
+      toast.error(e.message || "Delete me masla aya");
+    } finally {
+      setDeletingResId(null);
+    }
+  };
 
   const filtered = resellers.filter((r) =>
     r.fullName.toLowerCase().includes(searchQuery.toLowerCase()) || r.phone.includes(searchQuery)

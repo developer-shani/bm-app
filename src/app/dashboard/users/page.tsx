@@ -43,9 +43,12 @@ import {
   Share2,
   Key,
   Sparkles,
+  Edit,
+  Trash2,
+  UserCog,
 } from "lucide-react";
 import { db, storage } from "@/lib/firebase";
-import { collection, getDocs, addDoc, onSnapshot } from "firebase/firestore";
+import { collection, getDocs, addDoc, onSnapshot, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuth } from "@/hooks/use-auth";
 import { formatCurrency, cn } from "@/lib/utils";
@@ -82,6 +85,81 @@ export default function UsersPage() {
     role: string;
     phone?: string;
   } | null>(null);
+
+
+
+  // Edit User Modal State
+  const [editUser, setEditUser] = useState<SystemUser | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editRole, setEditRole] = useState<"admin" | "investor" | "reseller">("investor");
+  const [editStatus, setEditStatus] = useState("active");
+  const [editRatio, setEditRatio] = useState("50");
+  const [editSaving, setEditSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const openEditUser = (user: SystemUser) => {
+    setEditUser(user);
+    setEditName(user.name);
+    setEditPhone(user.phone);
+    setEditEmail(user.email);
+    setEditRole(user.role);
+    setEditStatus(user.status);
+    setEditRatio(String(user.sharingRatio || 50));
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editUser) return;
+    setEditSaving(true);
+    try {
+      const collectionName = editUser.role === "investor" ? "investors" : editUser.role === "reseller" ? "resellers" : "users";
+      const updateData: any = { fullName: editName, phone: editPhone, email: editEmail, status: editStatus };
+      if (editUser.role === "investor") updateData.sharingRatio = parseFloat(editRatio) || 50;
+      
+      await updateDoc(doc(db, collectionName, editUser.id), updateData).catch(() => {});
+      
+      // Also update users collection if exists
+      if (editUser.id) {
+        await updateDoc(doc(db, "users", editUser.id), { fullName: editName, name: editName, phone: editPhone, email: editEmail, status: editStatus, role: editRole }).catch(() => {});
+      }
+
+      // Update local state
+      setUsersList(prev => prev.map(u => u.id === editUser.id ? { ...u, name: editName, phone: editPhone, email: editEmail, role: editRole, status: editStatus, sharingRatio: parseFloat(editRatio) || 50 } : u));
+      toast.success(editName + " ki details update ho gayi!");
+      setEditUser(null);
+    } catch (e: any) {
+      toast.error(e.message || "Update me masla aya");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleSoftDelete = async (user: SystemUser) => {
+    if (user.role === "admin") {
+      toast.error("Admin ko delete nahi kar sakte");
+      return;
+    }
+    setDeletingId(user.id);
+    try {
+      const collectionName = user.role === "investor" ? "investors" : "resellers";
+      // Save to deleted_records
+      await addDoc(collection(db, "deleted_records"), {
+        originalId: user.id,
+        type: collectionName,
+        data: { name: user.name, fullName: user.name, email: user.email, phone: user.phone, role: user.role, sharingRatio: user.sharingRatio, totalInvestment: user.totalInvestment, totalCommission: user.totalCommission, status: user.status },
+        deletedAt: new Date().toISOString(),
+        deletedBy: "admin",
+      });
+      // Delete from original collection
+      await deleteDoc(doc(db, collectionName, user.id)).catch(() => {});
+      toast.success(user.name + " delete ho gaya! (Trash me jayen restore karne ke liye)");
+    } catch (e: any) {
+      toast.error(e.message || "Delete me masla aya");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const handleCopyCredentials = (user: { name: string; email: string; password?: string; role: string; phone?: string }) => {
     const roleTitle = user.role === "investor" ? "Investor / Partner" : user.role === "reseller" ? "Reseller / Member" : "Admin";
@@ -918,6 +996,53 @@ export default function UsersPage() {
           </CardContent>
         </Card>
       )}
+      {/* EDIT USER DIALOG */}
+      <Dialog open={!!editUser} onOpenChange={() => setEditUser(null)}>
+        <DialogContent className="max-w-[95vw] sm:max-w-[450px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <Edit className="w-5 h-5" /> Edit Member Details
+            </DialogTitle>
+            <DialogDescription>Member ki details yahan se update karein</DialogDescription>
+          </DialogHeader>
+          {editUser && (
+            <div className="space-y-3 py-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Name</Label>
+                <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Full Name" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Phone</Label>
+                <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} placeholder="Phone" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Email</Label>
+                <Input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Email" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold">Status</Label>
+                <div className="flex gap-2">
+                  <Button variant={editStatus === "active" ? "default" : "outline"} size="sm" onClick={() => setEditStatus("active")} className="text-xs flex-1">Active</Button>
+                  <Button variant={editStatus === "inactive" ? "default" : "outline"} size="sm" onClick={() => setEditStatus("inactive")} className="text-xs flex-1">Inactive</Button>
+                </div>
+              </div>
+              {editUser.role === "investor" && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold">Sharing Ratio (%)</Label>
+                  <Input type="number" value={editRatio} onChange={(e) => setEditRatio(e.target.value)} placeholder="50" />
+                </div>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditUser(null)} className="flex-1">Cancel</Button>
+            <Button onClick={handleSaveEdit} disabled={editSaving} className="flex-1 bg-amber-600 hover:bg-amber-700 text-white gap-1.5">
+              {editSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* SHARE CREDENTIALS MODAL */}
       <Dialog open={!!shareCredsUser} onOpenChange={() => setShareCredsUser(null)}>
         <DialogContent className="max-w-[95vw] sm:max-w-[450px] max-h-[90vh] overflow-y-auto">

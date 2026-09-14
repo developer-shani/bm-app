@@ -29,11 +29,11 @@ export default function DashboardLayout({
     }
   }, [appUser, loading, router]);
 
-  if (loading || !appUser) {
+  if (loading || !appUser || appUser.role !== "admin") {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-3">
         <Loader2 className="w-9 h-9 animate-spin text-primary" />
-        <p className="text-sm font-medium text-muted-foreground">Checking authentication...</p>
+        <p className="text-sm font-medium text-muted-foreground">Verifying permissions...</p>
       </div>
     );
   }

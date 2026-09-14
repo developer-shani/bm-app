@@ -20,6 +20,7 @@ import {
   Bell,
   AlertTriangle,
   UserCheck,
+  Trash2,
   X,
 } from "lucide-react";
 
@@ -33,6 +34,7 @@ const sidebarLinks = [
   { title: "Notifications", href: "/dashboard/notifications", icon: Bell },
   { title: "Losses", href: "/dashboard/losses", icon: AlertTriangle },
   { title: "Reports", href: "/dashboard/reports", icon: BarChart3 },
+  { title: "Delete History", href: "/dashboard/trash", icon: Trash2 },
   { title: "Settings", href: "/dashboard/settings", icon: Settings },
 ];
 
