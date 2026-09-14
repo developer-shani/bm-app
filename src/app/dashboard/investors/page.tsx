@@ -40,6 +40,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, getDocs, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, addDoc } from "firebase/firestore";
 import { Investor } from "@/types";
 import { formatCurrency } from "@/lib/utils";
+import { toast } from "sonner";
 
 export default function InvestorsPage() {
   const [investors, setInvestors] = useState<Investor[]>([]);
