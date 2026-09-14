@@ -5,6 +5,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -12,6 +21,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Wallet,
   Plus,
+  FileText,
+  Eye,
   Search,
   ArrowUpRight,
   Phone,
@@ -139,7 +150,7 @@ export default function InvestorsPage() {
   const filteredInvestors = investors.filter(
     (inv) =>
       inv.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      inv.cnic.includes(searchQuery) ||
+      (inv.cnic && inv.cnic.includes(searchQuery)) ||
       inv.phone.includes(searchQuery)
   );
 
@@ -165,7 +176,7 @@ export default function InvestorsPage() {
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
-          placeholder="Search by name, CNIC, or phone..."
+          placeholder="Search by name or phone..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10"
@@ -273,7 +284,31 @@ export default function InvestorsPage() {
           })}
         </div>
       )}
+      {/* View Agreement Image Dialog */}
+      <Dialog open={!!viewAgreementUrl} onOpenChange={() => setViewAgreementUrl(null)}>
+        <DialogContent className="max-w-[90vw] sm:max-w-[600px] p-6">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" /> Investor Agreement Document
+            </DialogTitle>
+          </DialogHeader>
+          {viewAgreementUrl && (
+            <div className="py-4 text-center space-y-4">
+              <img
+                src={viewAgreementUrl}
+                alt="Agreement Document Proof"
+                className="max-h-[70vh] w-auto mx-auto rounded-lg object-contain border shadow-sm"
+              />
+              <div className="flex justify-end gap-2">
+                <a href={viewAgreementUrl} target="_blank" rel="noopener noreferrer">
+                  <Button variant="outline" size="sm">Open Full Image</Button>
+                </a>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
-}
 
+}
