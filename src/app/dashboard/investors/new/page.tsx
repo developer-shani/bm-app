@@ -24,6 +24,8 @@ import {
   FileText,
   Sparkles,
   UserCircle,
+  Copy,
+  Check,
 } from "lucide-react";
 import Link from "next/link";
 import { db, storage } from "@/lib/firebase";
@@ -37,6 +39,7 @@ export default function AddInvestorPage() {
   const { createAccount } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState<"form" | "confirm" | "success">("form");
+  const [copied, setCopied] = useState(false);
 
   // Form state
   const [fullName, setFullName] = useState("");
@@ -58,6 +61,14 @@ export default function AddInvestorPage() {
   const [profilePicFile, setProfilePicFile] = useState<File | null>(null);
   const [profilePicPreview, setProfilePicPreview] = useState<string>("");
   const [showProfilePic, setShowProfilePic] = useState(false);
+
+    const handleCopyCredentials = () => {
+    const text = `Investor Login Credentials:\nEmail: ${email}\nPassword: ${password}`;
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast.success("Credentials clipboard me copy ho gaye! 📋");
+    setTimeout(() => setCopied(false), 2500);
+  };
 
   const actualRatio = customRatio || sharingRatio;
 
@@ -238,31 +249,68 @@ export default function AddInvestorPage() {
   if (step === "success") {
     return (
       <div className="max-w-lg mx-auto animate-fade-in">
-        <Card className="border-green-500/20">
+        <Card className="border-green-500/20 shadow-xl">
           <CardContent className="p-8 text-center">
             <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-4 animate-bounce">
               <CheckCircle2 className="w-8 h-8 text-green-500" />
             </div>
             <h3 className="text-xl font-bold mb-2">Account Created! ✅</h3>
-            <p className="text-sm text-muted-foreground mb-1">
-              <strong>{fullName}</strong> ka investor account ban gaya hai
+            <p className="text-sm text-muted-foreground mb-3">
+              <strong>{fullName}</strong> ka investor account kamyabi se ban gaya hai
             </p>
-            <p className="text-xs text-muted-foreground mb-6">
-              Login: {email}
-            </p>
-            <div className="flex gap-3 justify-center">
+
+            {/* Credentials Card with Copy Button */}
+            <div className="bg-muted/50 border border-border/60 rounded-xl p-4 my-5 text-left space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-border/40">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Account Credentials</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyCredentials}
+                  className="h-8 text-xs gap-1.5 font-medium hover:bg-primary hover:text-primary-foreground transition-all"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-green-500" />
+                      <span className="text-green-500 font-semibold">Copied!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy Credentials</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <div className="bg-background/60 p-2.5 rounded-lg border border-border/40">
+                  <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-0.5">Email</span>
+                  <span className="font-mono text-xs font-semibold select-all break-all">{email}</span>
+                </div>
+                <div className="bg-background/60 p-2.5 rounded-lg border border-border/40">
+                  <span className="text-[10px] text-muted-foreground uppercase font-bold block mb-0.5">Password</span>
+                  <span className="font-mono text-xs font-semibold select-all">{password}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 justify-center pt-2">
               <Link href="/dashboard/investors">
-                <Button variant="outline">View All Investors</Button>
+                <Button variant="outline" className="gap-2">View All Investors</Button>
               </Link>
-              <Button onClick={() => {
-                setStep("form");
-                setFullName(""); setPhone(""); setEmail(""); setPassword("");
-                setSharingRatio("50"); setCustomRatio(""); setHasInitialInvestment(false);
-                setInvestmentAmount(""); setProofImage(null); setProofPreview("");
-                setAgreementFile(null); setAgreementPreview("");
-                setProfilePicFile(null); setProfilePicPreview(""); setShowProfilePic(false);
-              }}>
-                Add Another
+              <Button
+                className="gradient-primary gap-2"
+                onClick={() => {
+                  setStep("form");
+                  setFullName(""); setPhone(""); setEmail(""); setPassword("");
+                  setSharingRatio("50"); setCustomRatio(""); setHasInitialInvestment(false);
+                  setInvestmentAmount(""); setProofImage(null); setProofPreview("");
+                  setAgreementFile(null); setAgreementPreview("");
+                  setProfilePicFile(null); setProfilePicPreview(""); setShowProfilePic(false);
+                }}
+              >
+                Add Another Investor
               </Button>
             </div>
           </CardContent>
