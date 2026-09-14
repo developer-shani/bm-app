@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect } from "react";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Smartphone, Lock, Mail, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Smartphone, Lock, Mail, Eye, EyeOff, Loader2, ShieldCheck, Wallet, Handshake } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -163,7 +163,7 @@ export default function LoginPage() {
             {/* Quick Demo Logins */}
             <div className="mt-6 pt-4 border-t border-border/40">
               <p className="text-xs text-center text-muted-foreground mb-3 font-medium">
-                âš¡ Quick Demo Login (Click to test roles):
+                ⚡ Quick Demo Login (Click to test roles):
               </p>
               <div className="grid grid-cols-3 gap-2">
                 <Button
@@ -180,7 +180,7 @@ export default function LoginPage() {
                     setIsLoading(false);
                   }}
                 >
-                  ðŸ‘‘ Admin
+                  <ShieldCheck className="w-4 h-4 mr-1.5 inline" /> Admin
                 </Button>
                 <Button
                   type="button"
@@ -196,7 +196,7 @@ export default function LoginPage() {
                     setIsLoading(false);
                   }}
                 >
-                  ðŸ’¼ Investor
+                  <Wallet className="w-4 h-4 mr-1.5 inline" /> Investor
                 </Button>
                 <Button
                   type="button"
@@ -212,7 +212,7 @@ export default function LoginPage() {
                     setIsLoading(false);
                   }}
                 >
-                  ðŸ“± Reseller
+                  <Handshake className="w-4 h-4 mr-1.5 inline" /> Reseller
                 </Button>
               </div>
             </div>
