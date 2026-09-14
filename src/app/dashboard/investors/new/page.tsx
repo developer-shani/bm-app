@@ -11,13 +11,6 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   ArrowLeft,
   User,
   Phone,
@@ -34,7 +27,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { db, storage } from "@/lib/firebase";
-import { collection, addDoc, doc, setDoc } from "firebase/firestore";
+import { collection, addDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
@@ -45,7 +38,7 @@ export default function AddInvestorPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState<"form" | "confirm" | "success">("form");
 
-  // Form state (NO CNIC)
+  // Form state
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -103,54 +96,45 @@ export default function AddInvestorPage() {
       toast.error("Saari required fields fill karein");
       return;
     }
+    if (password.length < 6) {
+      toast.error("Password kam az kam 6 characters hona chahiye");
+      return;
+    }
 
     setIsLoading(true);
+
     try {
+      // STEP 1: Create Auth Account (with 8s hard timeout so it never hangs)
       let userId = "inv-" + Date.now();
       try {
-        const createdId = await createAccount(email, password, {
+        const authPromise = createAccount(email, password, {
           email,
           fullName,
           phone,
           role: "investor",
           sharingRatio: parseInt(actualRatio),
         });
-        if (createdId) userId = createdId;
+        const timeoutPromise = new Promise<string>((resolve) =>
+          setTimeout(() => resolve("timeout-" + Date.now()), 8000)
+        );
+        const result = await Promise.race([authPromise, timeoutPromise]);
+        if (result && !result.startsWith("timeout-")) {
+          userId = result;
+        }
       } catch (authErr: any) {
         console.warn("Auth creation warning:", authErr);
-        if (authErr.message && !authErr.message.includes("timeout")) {
+        // If email already in use, stop here
+        if (authErr?.message?.includes("pehle se use")) {
           toast.error(authErr.message);
           setIsLoading(false);
           return;
         }
+        // For other auth errors (timeout, network), continue with fallback userId
       }
 
-      // Upload agreement image
-      let agreementUrl = "";
-      if (agreementFile) {
-        try {
-          const agreementRef = ref(storage, `agreements/investors/${userId}_${Date.now()}`);
-          await uploadBytes(agreementRef, agreementFile);
-          agreementUrl = await getDownloadURL(agreementRef);
-        } catch (e) {
-          console.warn("Agreement image upload warning:", e);
-        }
-      }
-
-      // Upload profile picture
-      let profileImageUrl = "";
-      if (profilePicFile) {
-        try {
-          const profileRef = ref(storage, `profiles/investors/${userId}_${Date.now()}`);
-          await uploadBytes(profileRef, profilePicFile);
-          profileImageUrl = await getDownloadURL(profileRef);
-        } catch (e) {
-          console.warn("Profile pic upload warning:", e);
-        }
-      }
-
+      // STEP 2: Save investor to Firestore (this is the critical step)
       const initialAmount = hasInitialInvestment ? parseFloat(investmentAmount) || 0 : 0;
-      const investorData = {
+      const investorData: Record<string, any> = {
         userId,
         fullName,
         phone,
@@ -163,28 +147,64 @@ export default function AddInvestorPage() {
         sharingRatio: parseInt(actualRatio),
         status: "active",
         createdAt: new Date().toISOString(),
-        ...(agreementUrl ? { agreementImage: agreementUrl } : {}),
-        ...(profileImageUrl ? { profileImage: profileImageUrl } : {}),
       };
 
-      const docRef = await addDoc(collection(db, "investors"), investorData);
-      const investorDocId = docRef.id || userId;
+      // Firestore save with 6s timeout
+      const fsPromise = addDoc(collection(db, "investors"), investorData);
+      const fsTimeout = new Promise<any>((_, reject) =>
+        setTimeout(() => reject(new Error("Firestore save timeout")), 6000)
+      );
+      const docRef = await Promise.race([fsPromise, fsTimeout]);
+      const investorDocId = docRef?.id || userId;
 
-      // Update local cache immediately
+      // ✅ SUCCESS! Account is created - show success IMMEDIATELY
+      toast.success(`${fullName} ka account ban gaya! ✅`);
+      setStep("success");
+      setIsLoading(false);
+
+      // Update local cache
       if (typeof window !== "undefined") {
         const newInvObj = { id: investorDocId, ...investorData };
-        const currentInv = localStorage.getItem("bm_cached_investors");
-        let list = [newInvObj];
-        if (currentInv) {
-          try {
+        try {
+          const currentInv = localStorage.getItem("bm_cached_investors");
+          let list = [newInvObj];
+          if (currentInv) {
             const parsed = JSON.parse(currentInv);
             if (Array.isArray(parsed)) list = [newInvObj, ...parsed.filter((i: any) => i.id !== newInvObj.id)];
-          } catch (e) {}
-        }
-        localStorage.setItem("bm_cached_investors", JSON.stringify(list));
+          }
+          localStorage.setItem("bm_cached_investors", JSON.stringify(list));
+        } catch (e) {}
       }
 
-      // Upload initial investment proof if provided
+      // STEP 3: Upload files in background (don't block UI)
+      // Agreement upload
+      if (agreementFile) {
+        try {
+          const agreementRef = ref(storage, `agreements/investors/${investorDocId}_${Date.now()}`);
+          await uploadBytes(agreementRef, agreementFile);
+          const agreementUrl = await getDownloadURL(agreementRef);
+          // Update investor doc with agreement URL
+          const { updateDoc, doc } = await import("firebase/firestore");
+          await updateDoc(doc(db, "investors", investorDocId), { agreementImage: agreementUrl });
+        } catch (e) {
+          console.warn("Agreement upload (background):", e);
+        }
+      }
+
+      // Profile pic upload
+      if (profilePicFile) {
+        try {
+          const profileRef = ref(storage, `profiles/investors/${investorDocId}_${Date.now()}`);
+          await uploadBytes(profileRef, profilePicFile);
+          const profileImageUrl = await getDownloadURL(profileRef);
+          const { updateDoc, doc } = await import("firebase/firestore");
+          await updateDoc(doc(db, "investors", investorDocId), { profileImage: profileImageUrl });
+        } catch (e) {
+          console.warn("Profile pic upload (background):", e);
+        }
+      }
+
+      // Investment record + proof
       if (hasInitialInvestment && initialAmount > 0) {
         let proofUrl = "";
         if (proofImage) {
@@ -193,27 +213,30 @@ export default function AddInvestorPage() {
             await uploadBytes(imageRef, proofImage);
             proofUrl = await getDownloadURL(imageRef);
           } catch (e) {
-            console.warn("Proof image upload warning:", e);
+            console.warn("Proof upload (background):", e);
           }
         }
-
-        await addDoc(collection(db, "investments"), {
-          investorId: investorDocId,
-          investorName: fullName,
-          amount: initialAmount,
-          type: "initial",
-          ...(proofUrl ? { imageProof: proofUrl } : {}),
-          date: new Date().toISOString(),
-          note: "Initial investment",
-        });
+        try {
+          await addDoc(collection(db, "investments"), {
+            investorId: investorDocId,
+            investorName: fullName,
+            amount: initialAmount,
+            type: "initial",
+            ...(proofUrl ? { imageProof: proofUrl } : {}),
+            date: new Date().toISOString(),
+            note: "Initial investment",
+          });
+        } catch (e) {
+          console.warn("Investment record (background):", e);
+        }
       }
-
-      // SUCCESS - immediately switch state
-      setStep("success");
-      toast.success("Investor account successfully create hogaya!");
     } catch (err: any) {
-      toast.error(err.message || "Account banane me masla aya");
-    } finally {
+      console.error("Investor creation error:", err);
+      if (err.message === "Firestore save timeout") {
+        toast.error("Server slow hai, dubara try karein");
+      } else {
+        toast.error(err.message || "Account banane me masla aya");
+      }
       setIsLoading(false);
     }
   };
@@ -223,10 +246,10 @@ export default function AddInvestorPage() {
       <div className="max-w-lg mx-auto animate-fade-in">
         <Card className="border-green-500/20">
           <CardContent className="p-8 text-center">
-            <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center mx-auto mb-4 animate-bounce">
               <CheckCircle2 className="w-8 h-8 text-green-500" />
             </div>
-            <h3 className="text-xl font-bold mb-2">Account Created!</h3>
+            <h3 className="text-xl font-bold mb-2">Account Created! ✅</h3>
             <p className="text-sm text-muted-foreground mb-1">
               <strong>{fullName}</strong> ka investor account ban gaya hai
             </p>
@@ -271,7 +294,7 @@ export default function AddInvestorPage() {
         </div>
       </div>
 
-      {/* Form */}
+      {/* Personal Info */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -281,7 +304,6 @@ export default function AddInvestorPage() {
           <CardDescription>Investor ki basic details</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Full Name */}
           <div className="space-y-2">
             <Label htmlFor="fullName">Full Name *</Label>
             <Input
@@ -308,19 +330,8 @@ export default function AddInvestorPage() {
               <div className="border-2 border-dashed border-border/60 rounded-xl p-4 text-center hover:border-primary/30 transition-colors animate-fade-in">
                 {profilePicPreview ? (
                   <div className="space-y-3">
-                    <img
-                      src={profilePicPreview}
-                      alt="Profile Picture"
-                      className="w-24 h-24 mx-auto rounded-full object-cover border-2 border-primary/20"
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => { setProfilePicFile(null); setProfilePicPreview(""); }}
-                    >
-                      Remove Photo
-                    </Button>
+                    <img src={profilePicPreview} alt="Profile" className="w-24 h-24 mx-auto rounded-full object-cover border-2 border-primary/20" />
+                    <Button type="button" variant="outline" size="sm" onClick={() => { setProfilePicFile(null); setProfilePicPreview(""); }}>Remove Photo</Button>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -330,32 +341,15 @@ export default function AddInvestorPage() {
                     <p className="text-xs text-muted-foreground">Upload investor ki photo</p>
                     <div className="flex gap-2 justify-center pt-1">
                       <label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleProfilePicChange}
-                          className="hidden"
-                        />
+                        <input type="file" accept="image/*" onChange={handleProfilePicChange} className="hidden" />
                         <Button type="button" variant="outline" size="sm" className="gap-1.5 h-8 text-xs" asChild>
-                          <span>
-                            <Upload className="w-3 h-3" />
-                            Upload Photo
-                          </span>
+                          <span><Upload className="w-3 h-3" /> Upload Photo</span>
                         </Button>
                       </label>
                       <label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="user"
-                          onChange={handleProfilePicChange}
-                          className="hidden"
-                        />
+                        <input type="file" accept="image/*" capture="user" onChange={handleProfilePicChange} className="hidden" />
                         <Button type="button" variant="outline" size="sm" className="gap-1.5 h-8 text-xs" asChild>
-                          <span>
-                            <Camera className="w-3 h-3" />
-                            Camera
-                          </span>
+                          <span><Camera className="w-3 h-3" /> Camera</span>
                         </Button>
                       </label>
                     </div>
@@ -365,66 +359,36 @@ export default function AddInvestorPage() {
             )}
           </div>
 
-          {/* Agreement Document Upload */}
+          {/* Agreement Upload */}
           <div className="space-y-2">
             <Label className="flex items-center justify-between">
-              <span>Agreement Document / Proof (Image)</span>
+              <span>Agreement Document / Proof</span>
               <span className="text-xs text-muted-foreground font-normal">(Optional)</span>
             </Label>
             <div className="border-2 border-dashed border-border/60 rounded-xl p-4 text-center hover:border-primary/30 transition-colors">
               {agreementPreview ? (
                 <div className="space-y-3">
-                  <img
-                    src={agreementPreview}
-                    alt="Agreement Proof"
-                    className="max-h-40 mx-auto rounded-lg object-cover border"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => { setAgreementFile(null); setAgreementPreview(""); }}
-                  >
-                    Remove Agreement Image
-                  </Button>
+                  <img src={agreementPreview} alt="Agreement" className="max-h-40 mx-auto rounded-lg object-cover border" />
+                  <Button type="button" variant="outline" size="sm" onClick={() => { setAgreementFile(null); setAgreementPreview(""); }}>Remove Agreement</Button>
                 </div>
               ) : (
                 <div className="space-y-2">
                   <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto">
                     <FileText className="w-5 h-5 text-muted-foreground" />
                   </div>
-                  <div>
-                    <p className="text-xs font-medium">Upload Agreement Document / Stamp Paper Proof</p>
-                    <p className="text-[10px] text-muted-foreground">PNG, JPG up to 10MB</p>
-                  </div>
+                  <p className="text-xs font-medium">Upload Agreement / Stamp Paper Proof</p>
+                  <p className="text-[10px] text-muted-foreground">PNG, JPG up to 10MB</p>
                   <div className="flex gap-2 justify-center pt-1">
                     <label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAgreementChange}
-                        className="hidden"
-                      />
+                      <input type="file" accept="image/*" onChange={handleAgreementChange} className="hidden" />
                       <Button type="button" variant="outline" size="sm" className="gap-1.5 h-8 text-xs" asChild>
-                        <span>
-                          <Upload className="w-3 h-3" />
-                          Upload Agreement
-                        </span>
+                        <span><Upload className="w-3 h-3" /> Upload</span>
                       </Button>
                     </label>
                     <label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={handleAgreementChange}
-                        className="hidden"
-                      />
+                      <input type="file" accept="image/*" capture="environment" onChange={handleAgreementChange} className="hidden" />
                       <Button type="button" variant="outline" size="sm" className="gap-1.5 h-8 text-xs" asChild>
-                        <span>
-                          <Camera className="w-3 h-3" />
-                          Camera
-                        </span>
+                        <span><Camera className="w-3 h-3" /> Camera</span>
                       </Button>
                     </label>
                   </div>
@@ -438,19 +402,13 @@ export default function AddInvestorPage() {
             <Label htmlFor="phone">Contact Number *</Label>
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                id="phone"
-                placeholder="03XX-XXXXXXX"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="pl-10"
-              />
+              <Input id="phone" placeholder="03XX-XXXXXXX" value={phone} onChange={(e) => setPhone(e.target.value)} className="pl-10" />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Login Details */}
+      {/* Login Credentials */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -462,21 +420,13 @@ export default function AddInvestorPage() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email Address *</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="investor@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <Input id="email" type="email" placeholder="investor@email.com" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">Password *</Label>
               <Button
-                type="button"
-                variant="ghost"
-                size="sm"
+                type="button" variant="ghost" size="sm"
                 className="h-6 px-2 text-[11px] gap-1 text-primary hover:text-primary"
                 onClick={() => {
                   const suggestions = [
@@ -493,15 +443,8 @@ export default function AddInvestorPage() {
                 <Sparkles className="w-3 h-3" /> Suggest Password
               </Button>
             </div>
-            <Input
-              id="password"
-              placeholder="Kam az kam 6 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            {password && (
-              <p className="text-[11px] text-muted-foreground">Password: <strong>{password}</strong></p>
-            )}
+            <Input id="password" placeholder="Kam az kam 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} />
+            {password && <p className="text-[11px] text-muted-foreground">Password: <strong>{password}</strong></p>}
           </div>
         </CardContent>
       </Card>
@@ -517,42 +460,13 @@ export default function AddInvestorPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-2">
-            <Button
-              variant={sharingRatio === "50" && !customRatio ? "default" : "outline"}
-              size="sm"
-              onClick={() => { setSharingRatio("50"); setCustomRatio(""); }}
-              className="flex-1"
-            >
-              50 / 50
-            </Button>
-            <Button
-              variant={sharingRatio === "40" && !customRatio ? "default" : "outline"}
-              size="sm"
-              onClick={() => { setSharingRatio("40"); setCustomRatio(""); }}
-              className="flex-1"
-            >
-              40 / 60
-            </Button>
-            <Button
-              variant={sharingRatio === "60" && !customRatio ? "default" : "outline"}
-              size="sm"
-              onClick={() => { setSharingRatio("60"); setCustomRatio(""); }}
-              className="flex-1"
-            >
-              60 / 40
-            </Button>
+            <Button variant={sharingRatio === "50" && !customRatio ? "default" : "outline"} size="sm" onClick={() => { setSharingRatio("50"); setCustomRatio(""); }} className="flex-1">50 / 50</Button>
+            <Button variant={sharingRatio === "40" && !customRatio ? "default" : "outline"} size="sm" onClick={() => { setSharingRatio("40"); setCustomRatio(""); }} className="flex-1">40 / 60</Button>
+            <Button variant={sharingRatio === "60" && !customRatio ? "default" : "outline"} size="sm" onClick={() => { setSharingRatio("60"); setCustomRatio(""); }} className="flex-1">60 / 40</Button>
           </div>
           <div className="space-y-2">
             <Label htmlFor="customRatio">Custom Ratio (Investor %)</Label>
-            <Input
-              id="customRatio"
-              type="number"
-              placeholder="Custom percentage e.g. 45"
-              value={customRatio}
-              onChange={(e) => setCustomRatio(e.target.value)}
-              min="0"
-              max="100"
-            />
+            <Input id="customRatio" type="number" placeholder="Custom percentage e.g. 45" value={customRatio} onChange={(e) => setCustomRatio(e.target.value)} min="0" max="100" />
             {actualRatio && (
               <p className="text-xs text-muted-foreground">
                 Investor: <strong>{actualRatio}%</strong> | Admin: <strong>{100 - parseInt(actualRatio)}%</strong>
@@ -573,82 +487,38 @@ export default function AddInvestorPage() {
               </CardTitle>
               <CardDescription>Kya investor abhi investment de raha hai?</CardDescription>
             </div>
-            <Switch
-              checked={hasInitialInvestment}
-              onCheckedChange={setHasInitialInvestment}
-            />
+            <Switch checked={hasInitialInvestment} onCheckedChange={setHasInitialInvestment} />
           </div>
         </CardHeader>
         {hasInitialInvestment && (
           <CardContent className="space-y-4 animate-fade-in">
             <div className="space-y-2">
               <Label htmlFor="investmentAmount">Investment Amount (PKR) *</Label>
-              <Input
-                id="investmentAmount"
-                type="number"
-                placeholder="e.g. 500000"
-                value={investmentAmount}
-                onChange={(e) => setInvestmentAmount(e.target.value)}
-              />
+              <Input id="investmentAmount" type="number" placeholder="e.g. 500000" value={investmentAmount} onChange={(e) => setInvestmentAmount(e.target.value)} />
             </div>
-
-            {/* Image Upload */}
             <div className="space-y-2">
               <Label>Payment Proof (Image)</Label>
               <div className="border-2 border-dashed border-border/60 rounded-xl p-6 text-center hover:border-primary/30 transition-colors">
                 {proofPreview ? (
                   <div className="space-y-3">
-                    <img
-                      src={proofPreview}
-                      alt="Proof"
-                      className="max-h-48 mx-auto rounded-lg object-cover"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => { setProofImage(null); setProofPreview(""); }}
-                    >
-                      Remove
-                    </Button>
+                    <img src={proofPreview} alt="Proof" className="max-h-48 mx-auto rounded-lg object-cover" />
+                    <Button variant="outline" size="sm" onClick={() => { setProofImage(null); setProofPreview(""); }}>Remove</Button>
                   </div>
                 ) : (
                   <div className="space-y-3">
                     <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto">
                       <ImagePlus className="w-6 h-6 text-muted-foreground" />
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">Upload payment proof</p>
-                      <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
-                    </div>
+                    <p className="text-sm font-medium">Upload payment proof</p>
+                    <p className="text-xs text-muted-foreground">PNG, JPG up to 10MB</p>
                     <div className="flex gap-2 justify-center">
                       <label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleImageChange}
-                          className="hidden"
-                        />
-                        <Button variant="outline" size="sm" className="gap-1.5" asChild>
-                          <span>
-                            <Upload className="w-3.5 h-3.5" />
-                            Upload
-                          </span>
-                        </Button>
+                        <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+                        <Button variant="outline" size="sm" className="gap-1.5" asChild><span><Upload className="w-3.5 h-3.5" /> Upload</span></Button>
                       </label>
                       <label>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          onChange={handleImageChange}
-                          className="hidden"
-                        />
-                        <Button variant="outline" size="sm" className="gap-1.5" asChild>
-                          <span>
-                            <Camera className="w-3.5 h-3.5" />
-                            Camera
-                          </span>
-                        </Button>
+                        <input type="file" accept="image/*" capture="environment" onChange={handleImageChange} className="hidden" />
+                        <Button variant="outline" size="sm" className="gap-1.5" asChild><span><Camera className="w-3.5 h-3.5" /> Camera</span></Button>
                       </label>
                     </div>
                   </div>
@@ -659,7 +529,7 @@ export default function AddInvestorPage() {
         )}
       </Card>
 
-      {/* Submit */}
+      {/* Submit Buttons */}
       <div className="flex justify-end gap-3 pb-8">
         <Link href="/dashboard/investors">
           <Button variant="outline">Cancel</Button>
@@ -671,26 +541,25 @@ export default function AddInvestorPage() {
                 toast.error("Saari required fields fill karein");
                 return;
               }
+              if (password.length < 6) {
+                toast.error("Password kam az kam 6 characters hona chahiye");
+                return;
+              }
               setStep("confirm");
             }}
             className="gradient-primary gap-2"
           >
-            <CheckCircle2 className="w-4 h-4" />
-            Create Account
+            <CheckCircle2 className="w-4 h-4" /> Create Account
           </Button>
         ) : (
-          <Button
-            onClick={handleSubmit}
-            disabled={isLoading}
-            className="gradient-primary gap-2"
-          >
+          <Button onClick={handleSubmit} disabled={isLoading} className="gradient-primary gap-2">
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
             Create with Investment
           </Button>
         )}
       </div>
 
-      {/* Confirmation Dialog (NO CNIC - replaced with Phone/Email) */}
+      {/* Confirmation Dialog */}
       {step === "confirm" && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
           <Card className="max-w-md w-full animate-scale-in">
@@ -699,9 +568,7 @@ export default function AddInvestorPage() {
                 <User className="w-6 h-6 text-primary" />
               </div>
               <CardTitle>Confirm Account Creation</CardTitle>
-              <CardDescription>
-                Kya aap sure hain ke ye account banana chahte hain?
-              </CardDescription>
+              <CardDescription>Kya aap sure hain ke ye account banana chahte hain?</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="bg-muted/50 rounded-lg p-4 space-y-2 text-sm">
@@ -731,28 +598,15 @@ export default function AddInvestorPage() {
                     <Badge variant="outline" className="text-green-600">Uploaded</Badge>
                   </div>
                 )}
-                {profilePicFile && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Profile Pic:</span>
-                    <Badge variant="outline" className="text-blue-600">Uploaded</Badge>
-                  </div>
-                )}
               </div>
               <div className="flex gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  className="flex-1"
-                  onClick={() => setStep("form")}
-                >
-                  Go Back
-                </Button>
-                <Button
-                  className="flex-1 gradient-primary"
-                  onClick={handleSubmit}
-                  disabled={isLoading}
-                >
-                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  Yes, Create
+                <Button variant="outline" className="flex-1" onClick={() => setStep("form")} disabled={isLoading}>Go Back</Button>
+                <Button className="flex-1 gradient-primary" onClick={handleSubmit} disabled={isLoading}>
+                  {isLoading ? (
+                    <><Loader2 className="w-4 h-4 animate-spin mr-2" /> Creating...</>
+                  ) : (
+                    "Yes, Create"
+                  )}
                 </Button>
               </div>
             </CardContent>
