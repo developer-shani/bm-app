@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 export const dynamic = "force-dynamic";
 
 import { useState } from "react";
@@ -29,6 +29,7 @@ import {
   CheckCircle2,
   Wallet,
   ImagePlus,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { db, storage } from "@/lib/firebase";
@@ -69,7 +70,7 @@ export default function AddInvestorPage() {
   };
 
   const handleSubmit = async () => {
-    if (!fullName || !cnic || !phone || !email || !password) {
+    if (!fullName || !phone || !email || !password) {
       toast.error("Saari required fields fill karein");
       return;
     }
@@ -215,7 +216,7 @@ export default function AddInvestorPage() {
 
           {/* CNIC */}
           <div className="space-y-2">
-            <Label htmlFor="cnic">CNIC / ID Card Number *</Label>
+            <Label htmlFor="cnic">CNIC / ID Card Number <span className="text-muted-foreground font-normal text-xs">(Optional)</span></Label>
             <div className="relative">
               <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -266,14 +267,37 @@ export default function AddInvestorPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password *</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password *</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-[11px] gap-1 text-primary hover:text-primary"
+                onClick={() => {
+                  const suggestions = [
+                    `brother${Math.floor(1000 + Math.random() * 9000)}`,
+                    `bm${phone.slice(-4) || Math.floor(1000 + Math.random() * 9000)}`,
+                    `partner${Math.floor(100 + Math.random() * 900)}`,
+                    `invest${Math.floor(1000 + Math.random() * 9000)}`,
+                  ];
+                  const pwd = suggestions[Math.floor(Math.random() * suggestions.length)];
+                  setPassword(pwd);
+                  toast.success(`Password set: ${pwd}`);
+                }}
+              >
+                <Sparkles className="w-3 h-3" /> Suggest Password
+              </Button>
+            </div>
             <Input
               id="password"
-              type="password"
               placeholder="Kam az kam 6 characters"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
+            {password && (
+              <p className="text-[11px] text-muted-foreground">Password: <strong>{password}</strong></p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -439,7 +463,7 @@ export default function AddInvestorPage() {
         {!hasInitialInvestment ? (
           <Button
             onClick={() => {
-              if (!fullName || !cnic || !phone || !email || !password) {
+              if (!fullName || !phone || !email || !password) {
                 toast.error("Saari required fields fill karein");
                 return;
               }

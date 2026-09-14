@@ -42,6 +42,7 @@ import {
   Copy,
   Share2,
   Key,
+  Sparkles,
 } from "lucide-react";
 import { db, storage } from "@/lib/firebase";
 import { collection, getDocs, addDoc } from "firebase/firestore";
@@ -212,7 +213,7 @@ export default function UsersPage() {
 
   // Submit Investor (Partner)
   const handleAddInvestor = async () => {
-    if (!invName || !invCnic || !invPhone || !invEmail || !invPassword) {
+    if (!invName || !invPhone || !invEmail || !invPassword) {
       toast.error("Saari required fields fill karein");
       return;
     }
@@ -598,7 +599,7 @@ export default function UsersPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-semibold">CNIC / ID Number *</Label>
+                <Label className="text-xs font-semibold">CNIC / ID Number <span className="text-muted-foreground font-normal">(Optional)</span></Label>
                 <Input
                   placeholder="35201-1234567-1"
                   value={invCnic}
@@ -629,13 +630,36 @@ export default function UsersPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">Login Password *</Label>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">Login Password *</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-[11px] gap-1 text-primary hover:text-primary"
+                  onClick={() => {
+                    const suggestions = [
+                      `brother${Math.floor(1000 + Math.random() * 9000)}`,
+                      `bm${invPhone.slice(-4) || Math.floor(1000 + Math.random() * 9000)}`,
+                      `partner${Math.floor(100 + Math.random() * 900)}`,
+                      `invest${Math.floor(1000 + Math.random() * 9000)}`,
+                    ];
+                    const pwd = suggestions[Math.floor(Math.random() * suggestions.length)];
+                    setInvPassword(pwd);
+                    toast.success(`Password set: ${pwd}`);
+                  }}
+                >
+                  <Sparkles className="w-3 h-3" /> Suggest Password
+                </Button>
+              </div>
               <Input
-                type="password"
                 placeholder="Minimum 6 characters"
                 value={invPassword}
                 onChange={(e) => setInvPassword(e.target.value)}
               />
+              {invPassword && (
+                <p className="text-[11px] text-muted-foreground">Password: <strong>{invPassword}</strong></p>
+              )}
             </div>
 
             <Separator />
