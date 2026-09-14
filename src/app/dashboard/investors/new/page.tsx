@@ -85,7 +85,7 @@ export default function AddInvestorPage() {
     }
   };
 
-  const handleSubmit = async () => {
+    const handleSubmit = async () => {
     if (!fullName || !phone || !email || !password) {
       toast.error("Saari required fields fill karein");
       return;
@@ -95,7 +95,7 @@ export default function AddInvestorPage() {
     try {
       let userId = "inv-" + Date.now();
       try {
-        userId = await createAccount(email, password, {
+        const createdId = await createAccount(email, password, {
           email,
           fullName,
           cnic,
@@ -103,11 +103,11 @@ export default function AddInvestorPage() {
           role: "investor",
           sharingRatio: parseInt(actualRatio),
         });
+        if (createdId) userId = createdId;
       } catch (authErr: any) {
         console.warn("Auth creation warning:", authErr);
       }
 
-      
       let agreementUrl = "";
       if (agreementFile) {
         try {
@@ -137,20 +137,9 @@ export default function AddInvestorPage() {
         ...(agreementUrl ? { agreementImage: agreementUrl } : {}),
       };
 
-
-      let investorDocId = userId;
-      try {
-        const addPromise = addDoc(collection(db, "investors"), investorData);
-        const timeoutPromise = new Promise<never>((_, reject) =>
-          setTimeout(() => reject(new Error("Timeout")), 3000)
-        );
-        const docRef: any = await Promise.race([addPromise, timeoutPromise]);
-        if (docRef?.id) investorDocId = docRef.id;
-      } catch (fsErr) {
-        console.warn("Firestore save timeout/fallback:", fsErr);
-      }
-
-      const investorRef = { id: investorDocId };
+      // Save directly to Firestore without artificially blocking timeout
+      const docRef = await addDoc(collection(db, "investors"), investorData);
+      const investorDocId = docRef.id || userId;
 
       if (typeof window !== "undefined") {
         const newInvObj = { id: investorDocId, ...investorData };
@@ -165,28 +154,25 @@ export default function AddInvestorPage() {
         localStorage.setItem("bm_cached_investors", JSON.stringify(list));
       }
 
-      // Upload proof image if provided
-      if (hasInitialInvestment && proofImage) {
-        const imageRef = ref(storage, `investments/${investorRef.id}/${Date.now()}_proof`);
-        await uploadBytes(imageRef, proofImage);
-        const imageUrl = await getDownloadURL(imageRef);
+      // Upload initial investment proof if provided
+      if (hasInitialInvestment) {
+        let proofUrl = "";
+        if (proofImage) {
+          try {
+            const imageRef = ref(storage, `investments/${investorDocId}/${Date.now()}_proof`);
+            await uploadBytes(imageRef, proofImage);
+            proofUrl = await getDownloadURL(imageRef);
+          } catch (e) {
+            console.warn("Proof image upload warning:", e);
+          }
+        }
 
-        // Add investment record
         await addDoc(collection(db, "investments"), {
-          investorId: investorRef.id,
+          investorId: investorDocId,
           investorName: fullName,
-          amount: parseFloat(investmentAmount),
+          amount: initialAmount,
           type: "initial",
-          imageProof: imageUrl,
-          date: new Date().toISOString(),
-          note: "Initial investment",
-        });
-      } else if (hasInitialInvestment) {
-        await addDoc(collection(db, "investments"), {
-          investorId: investorRef.id,
-          investorName: fullName,
-          amount: parseFloat(investmentAmount),
-          type: "initial",
+          ...(proofUrl ? { imageProof: proofUrl } : {}),
           date: new Date().toISOString(),
           note: "Initial investment",
         });

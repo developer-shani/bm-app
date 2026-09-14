@@ -29,8 +29,14 @@ import {
   CreditCard,
   Percent,
   MoreVertical,
+  Upload,
+  Camera,
+  ImagePlus,
+  Loader2,
+  Trash2,
 } from "lucide-react";
-import { db } from "@/lib/firebase";
+import { db, storage } from "@/lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, getDocs, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, addDoc } from "firebase/firestore";
 import { Investor } from "@/types";
 import { formatCurrency } from "@/lib/utils";
@@ -71,7 +77,87 @@ export default function InvestorsPage() {
       }
     );
 
-    return () => unsubscribe();
+  
+  const handleBalanceProofChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setBalanceProofFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setBalanceProofPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAddBalanceSubmit = async () => {
+    if (!balanceInvestor || !addAmount || parseFloat(addAmount) <= 0) {
+      toast.error("Meharbani karke valid amount enter karein");
+      return;
+    }
+    setBalanceLoading(true);
+    try {
+      const amount = parseFloat(addAmount);
+      let proofUrl = "";
+
+      if (balanceProofFile) {
+        try {
+          const proofRef = ref(storage, `investments/${balanceInvestor.id}/${Date.now()}_add_proof`);
+          await uploadBytes(proofRef, balanceProofFile);
+          proofUrl = await getDownloadURL(proofRef);
+        } catch (e) {
+          console.warn("Balance proof upload error:", e);
+        }
+      }
+
+      // Add record to investments history
+      await addDoc(collection(db, "investments"), {
+        investorId: balanceInvestor.id,
+        investorName: balanceInvestor.fullName,
+        amount,
+        type: "additional",
+        ...(proofUrl ? { imageProof: proofUrl } : {}),
+        date: new Date().toISOString(),
+        note: addNote || "Admin ne additional balance add kiya",
+      });
+
+      // Update investor's available balance and total investment
+      const newAvail = (balanceInvestor.availableBalance || 0) + amount;
+      const newTotal = (balanceInvestor.totalInvestment || 0) + amount;
+      await updateDoc(doc(db, "investors", balanceInvestor.id), {
+        availableBalance: newAvail,
+        totalInvestment: newTotal,
+      });
+
+      toast.success(`Rs. ${amount.toLocaleString()} balance successfully add hogaya!`);
+      setBalanceInvestor(null);
+      setAddAmount("");
+      setAddNote("");
+      setBalanceProofFile(null);
+      setBalanceProofPreview("");
+    } catch (err: any) {
+      toast.error(err.message || "Balance add karne me masla aya");
+    } finally {
+      setBalanceLoading(false);
+    }
+  };
+
+  const handleSoftDelete = async (inv: Investor) => {
+    if (!confirm(`Kya aap ${inv.fullName} ko trash me bhejna chahte hain?`)) return;
+    try {
+      await addDoc(collection(db, "deleted_records"), {
+        originalId: inv.id,
+        type: "investors",
+        data: inv,
+        deletedAt: new Date().toISOString(),
+        deletedBy: "admin",
+      });
+      await deleteDoc(doc(db, "investors", inv.id));
+      toast.success(`${inv.fullName} trash me chala gaya.`);
+    } catch (e: any) {
+      toast.error(e.message || "Delete karne me masla aya");
+    }
+  };
+
+  return () => unsubscribe();
   }, []);
 
 
@@ -284,6 +370,117 @@ export default function InvestorsPage() {
           })}
         </div>
       )}
+
+      {/* Add Balance / Investment Dialog */}
+      <Dialog open={!!balanceInvestor} onOpenChange={() => setBalanceInvestor(null)}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-600">
+              <Wallet className="w-5 h-5" /> Add Balance / Investment
+            </DialogTitle>
+            <DialogDescription>
+              {balanceInvestor?.fullName} ke account me naya balance add karein
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold">Amount (PKR) *</label>
+              <Input
+                type="number"
+                placeholder="e.g. 100000"
+                value={addAmount}
+                onChange={(e) => setAddAmount(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold">Note / Remarks (Optional)</label>
+              <Input
+                placeholder="e.g. Cash payment / Bank transfer"
+                value={addNote}
+                onChange={(e) => setAddNote(e.target.value)}
+              />
+            </div>
+
+            {/* Payment Proof Upload */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold">Payment Proof Image (Optional)</label>
+              <div className="border-2 border-dashed border-border/60 rounded-xl p-4 text-center hover:border-emerald-500/30 transition-colors">
+                {balanceProofPreview ? (
+                  <div className="space-y-2">
+                    <img
+                      src={balanceProofPreview}
+                      alt="Payment Proof"
+                      className="max-h-32 mx-auto rounded-lg object-cover border"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => { setBalanceProofFile(null); setBalanceProofPreview(""); }}
+                      className="h-7 text-xs"
+                    >
+                      Remove Proof
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center mx-auto">
+                      <ImagePlus className="w-4 h-4 text-muted-foreground" />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Slip / Receipt / Bank Screenshot upload karein</p>
+                    <div className="flex gap-2 justify-center pt-1">
+                      <label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleBalanceProofChange}
+                          className="hidden"
+                        />
+                        <Button type="button" variant="outline" size="sm" className="gap-1.5 h-7 text-xs" asChild>
+                          <span>
+                            <Upload className="w-3 h-3" />
+                            Upload Proof
+                          </span>
+                        </Button>
+                      </label>
+                      <label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handleBalanceProofChange}
+                          className="hidden"
+                        />
+                        <Button type="button" variant="outline" size="sm" className="gap-1.5 h-7 text-xs" asChild>
+                          <span>
+                            <Camera className="w-3 h-3" />
+                            Camera
+                          </span>
+                        </Button>
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBalanceInvestor(null)}>Cancel</Button>
+            <Button
+              onClick={handleAddBalanceSubmit}
+              disabled={balanceLoading}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+            >
+              {balanceLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              Add Balance
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* View Agreement Image Dialog */}
       <Dialog open={!!viewAgreementUrl} onOpenChange={() => setViewAgreementUrl(null)}>
         <DialogContent className="max-w-[90vw] sm:max-w-[600px] p-6">
