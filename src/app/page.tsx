@@ -172,10 +172,10 @@ export default function LoginPage() {
                   size="sm"
                   className="text-xs font-medium h-9 border-primary/20 hover:bg-primary/10"
                   onClick={async () => {
-                    setEmail("admin@brothermobiles.com");
-                    setPassword("admin123");
+                    setEmail("admin@brother.com");
+                    setPassword("44332211Shani@");
                     setIsLoading(true);
-                    await signIn("admin@brothermobiles.com", "admin123");
+                    await signIn("admin@brother.com", "44332211Shani@");
                     router.push("/dashboard");
                     setIsLoading(false);
                   }}
