@@ -533,7 +533,7 @@ export default function RecoveryPage() {
                     />
                   
               {recoveryAmount && parseFloat(recoveryAmount) > 0 && (
-                <p className="text-xs text-primary font-medium mt-1">\u{1F4B0} {amountToUrduWords(recoveryAmount)} Rupees</p>
+                <p className="text-xs text-primary font-medium mt-1">💰 {amountToUrduWords(recoveryAmount)} Rupees</p>
               )}
             </div>
 
