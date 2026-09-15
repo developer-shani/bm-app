@@ -64,10 +64,12 @@ export default function AddInvestorPage() {
   const [showProfilePic, setShowProfilePic] = useState(false);
 
     const handleCopyCredentials = () => {
-    const text = `Investor Login Credentials:\nEmail: ${email}\nPassword: ${password}`;
+    const origin = typeof window !== "undefined" ? window.location.origin : "https://bm-app-v2.vercel.app";
+    const phoneStr = phone ? `\n📱 *Phone:* ${phone}` : "";
+    const text = `🔑 *Brother Mobiles Portal Access Credentials*\n\n👤 *Name:* ${fullName}\n🛡️ *Role:* Investor / Partner${phoneStr}\n📧 *Email/Username:* ${email}\n🔒 *Password:* ${password || "N/A"}\n🌐 *Portal Link:* ${origin}\n\n_Brother Mobiles Shop Management System_`;
     navigator.clipboard.writeText(text);
     setCopied(true);
-    toast.success("Credentials clipboard me copy ho gaye! 📋");
+    toast.success("Credentials clipboard me copy ho gaye!");
     setTimeout(() => setCopied(false), 2500);
   };
 

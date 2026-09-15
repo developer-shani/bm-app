@@ -10,7 +10,7 @@ import {
   signOut as firebaseSignOut,
   createUserWithEmailAndPassword,
 } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { initializeApp, getApps, deleteApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { auth, db, firebaseConfig } from "@/lib/firebase";
@@ -131,6 +131,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       const lowerEmail = email.toLowerCase().trim();
+      let targetEmail = lowerEmail;
+
+      // If user typed a phone number or username (no '@')
+      if (!targetEmail.includes("@")) {
+        const cleanDigits = targetEmail.replace(/[^0-9]/g, "");
+        let foundEmail = "";
+        try {
+          const q = query(collection(db, "users"), where("phone", "==", lowerEmail));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            foundEmail = snap.docs[0].data().email;
+          } else if (cleanDigits) {
+            const q2 = query(collection(db, "users"), where("phone", "==", cleanDigits));
+            const snap2 = await getDocs(q2);
+            if (!snap2.empty) {
+              foundEmail = snap2.docs[0].data().email;
+            }
+          }
+        } catch (e) {}
+
+        if (foundEmail) {
+          targetEmail = foundEmail;
+        } else if (cleanDigits.length >= 7) {
+          targetEmail = `${cleanDigits}@brother.com`;
+        } else if (targetEmail) {
+          targetEmail = `${targetEmail}@brother.com`;
+        }
+      }
 
       // Demo logins for testing (admin demo only)
       if (lowerEmail === "admin@brothermobiles.com" || lowerEmail === "admin") {
@@ -180,7 +208,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       // Real Firebase Auth login
-      const result = await signInWithEmailAndPassword(auth, email, password);
+      const result = await signInWithEmailAndPassword(auth, targetEmail, password);
       
       // Super Admin always gets full access
       if (result.user.uid === SUPER_ADMIN_UID) {

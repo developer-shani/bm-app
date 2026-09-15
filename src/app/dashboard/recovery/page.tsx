@@ -238,7 +238,7 @@ export default function RecoveryPage() {
   const handleSendWhatsAppReceipt = () => {
     if (!lastRecorded) return;
     const { customer, amount, installmentNo } = lastRecorded;
-    const msg = `*Brother Mobiles - Payment Receipt* ðŸ§¾\n\nDear ${customer.name},\nWe have received your installment payment of *${formatCurrency(amount)}* (${paymentMethod}).\n\n- Installment #: ${installmentNo}/${customer.installmentMonths}\n- Remaining Balance: ${formatCurrency(Math.max(0, customer.remainingAmount - amount))}\n- Date: ${new Date().toLocaleDateString("en-PK")}\n\nThank you for choosing Brother Mobiles! ðŸ™`;
+    const msg = `*Brother Mobiles - Payment Receipt* 🧾\n\nDear ${customer.name},\nWe have received your installment payment of *${formatCurrency(amount)}* (${paymentMethod}).\n\n- Installment #: ${installmentNo}/${customer.installmentMonths}\n- Remaining Balance: ${formatCurrency(Math.max(0, customer.remainingAmount - amount))}\n- Date: ${new Date().toLocaleDateString("en-PK")}\n\nThank you for choosing Brother Mobiles! 🙏`;
     const phone = customer.phone1.replace(/[^0-9]/g, "");
     window.open(`https://wa.me/92${phone.startsWith("0") ? phone.slice(1) : phone}?text=${encodeURIComponent(msg)}`, "_blank");
   };
