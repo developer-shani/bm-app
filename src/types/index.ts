@@ -58,10 +58,15 @@ export interface WithdrawalRequest {
   investorName: string;
   amount: number;
   status: "pending" | "approved" | "rejected";
-  requestedAt: string;
+  requestedAt?: string;
+  createdAt?: string;
   processedAt?: string;
-  estimatedImpact?: string;
+  approvedAt?: string;
   adminNote?: string;
+  proofImage?: string;
+  transactionRef?: string;
+  bankDetails?: string;
+  rejectReason?: string;
 }
 
 // ============================================

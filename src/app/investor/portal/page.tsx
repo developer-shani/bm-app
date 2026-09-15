@@ -1,7 +1,8 @@
 ﻿"use client";
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
+import {
+  Image as ImageIcon, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,7 @@ import {
   Moon,
   Loader2,
   CheckCircle2,
-  AlertTriangle,
+  AlertTriangle, Ban,
   ImagePlus,
   Upload,
   Camera,
@@ -98,6 +99,8 @@ export default function InvestorPortalPage() {
   const [editPhotoUrl, setEditPhotoUrl] = useState("");
   const [profileEditLoading, setProfileEditLoading] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [withdrawalsList, setWithdrawalsList] = useState<any[]>([]);
+  const [selectedProof, setSelectedProof] = useState<{ image: string; title: string; ref?: string; note?: string } | null>(null);
 
   useEffect(() => {
     if (!appUser) {
@@ -538,6 +541,110 @@ export default function InvestorPortalPage() {
           </Card>
         </div>
 
+        {/* Defaulted & Loss Cases 50/50 Section */}
+        {customers.some((cust) => cust.status === "defaulted") && (
+          <Card className="border-red-500/30 bg-red-500/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2 text-red-500">
+                <Ban className="w-4 h-4 text-red-500" />
+                Defaulted Cases & 50/50 Loss Share
+              </CardTitle>
+              <CardDescription>Aapke capital par defaulted sets aur aapka 50% loss share</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {customers.filter((cust) => cust.status === "defaulted").map((cust) => {
+                const shopLossShare = Math.round(cust.remainingAmount * 0.5);
+                const investorLossShare = cust.remainingAmount - shopLossShare;
+                return (
+                  <div key={cust.id} className="p-3.5 rounded-xl border border-red-500/20 bg-background/60 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-sm text-foreground">{cust.name} ({cust.phone1})</p>
+                        <p className="text-xs text-muted-foreground">{cust.mobileCompany} {cust.mobileModel}</p>
+                      </div>
+                      <Badge variant="destructive" className="text-[10px]">Defaulted</Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t">
+                      <div className="bg-red-500/10 p-2 rounded-lg border border-red-500/20">
+                        <span className="text-muted-foreground block text-[10px]">Total Case Loss:</span>
+                        <span className="font-bold text-red-500">{formatCurrency(cust.remainingAmount)}</span>
+                      </div>
+                      <div className="bg-purple-500/10 p-2 rounded-lg border border-purple-500/20">
+                        <span className="text-muted-foreground block text-[10px]">Your 50% Loss Share:</span>
+                        <span className="font-bold text-purple-400">{formatCurrency(investorLossShare)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Withdrawal Requests & History Card */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ArrowUpFromLine className="w-4 h-4 text-primary" />
+              Withdrawal Requests & Payment Proofs
+            </CardTitle>
+            <CardDescription>Aapki bheji gayi withdrawal requests aur unka payment proof</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {withdrawalsList.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">Abhi koi withdrawal request nahi hai</p>
+            ) : (
+              <div className="space-y-3">
+                {withdrawalsList.map((w) => (
+                  <div key={w.id} className="p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/20">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-base">{formatCurrency(w.amount)}</span>
+                        <Badge
+                          variant="outline"
+                          className={
+                            w.status === "approved"
+                              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                              : w.status === "rejected"
+                              ? "bg-red-500/10 text-red-500 border-red-500/20"
+                              : "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                          }
+                        >
+                          {w.status === "approved" ? "Approved ✓" : w.status === "rejected" ? "Rejected ✕" : "Pending ⏳"}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Date: {formatDate(w.createdAt || w.requestedAt || new Date().toISOString())}
+                      </p>
+                      {w.transactionRef && (
+                        <p className="text-xs font-mono text-muted-foreground">
+                          Ref: {w.transactionRef}
+                        </p>
+                      )}
+                      {w.rejectReason && (
+                        <p className="text-xs text-red-400">
+                          Reason: {w.rejectReason}
+                        </p>
+                      )}
+                    </div>
+
+                    {w.status === "approved" && w.proofImage && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1.5 text-xs text-emerald-500 border-emerald-500/30 hover:bg-emerald-500/10"
+                        onClick={() => setSelectedProof({ image: w.proofImage, title: `Withdrawal Payment Proof (${formatCurrency(w.amount)})`, ref: w.transactionRef, note: w.adminNote })}
+                      >
+                        <ImageIcon className="w-3.5 h-3.5" /> View Payment Proof
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Customers on this investor's capital */}
         <Card>
           <CardHeader>
@@ -709,6 +816,35 @@ export default function InvestorPortalPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Payment Proof Viewer Dialog */}
+      <Dialog open={!!selectedProof} onOpenChange={(open) => !open && setSelectedProof(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-500">
+              <ImageIcon className="w-5 h-5" /> {selectedProof?.title}
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedProof && (
+            <div className="space-y-3 my-2 text-center">
+              <div className="rounded-xl overflow-hidden border bg-black/50 p-2">
+                <img src={selectedProof.image} alt="Payment Proof" className="max-h-72 mx-auto rounded-lg object-contain" />
+              </div>
+              {selectedProof.ref && (
+                <p className="text-xs font-mono text-muted-foreground">
+                  Transaction Reference: <strong>{selectedProof.ref}</strong>
+                </p>
+              )}
+              {selectedProof.note && (
+                <p className="text-xs text-muted-foreground">
+                  Note: {selectedProof.note}
+                </p>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Edit Profile Dialog */}
       <Dialog open={showProfileEdit} onOpenChange={setShowProfileEdit}>
         <DialogContent className="sm:max-w-[425px]">
