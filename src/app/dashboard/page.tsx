@@ -100,6 +100,7 @@ export default function DashboardPage() {
   const [resellers, setResellers] = useState<Reseller[]>([]);
   const [recoveries, setRecoveries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadedCount, setLoadedCount] = useState(0);
 
   useEffect(() => {
     // 1. Real-time Customers Listener
@@ -121,6 +122,7 @@ export default function DashboardPage() {
       if (typeof window !== "undefined") {
         localStorage.setItem("bm_cached_investors", JSON.stringify(data));
       }
+      setLoadedCount(prev => prev + 1);
     }, (err) => console.warn("Inv realtime sync warn:", err));
 
     // 3. Real-time Resellers Listener
@@ -131,6 +133,7 @@ export default function DashboardPage() {
       if (typeof window !== "undefined") {
         localStorage.setItem("bm_cached_resellers", JSON.stringify(data));
       }
+      setLoadedCount(prev => prev + 1);
     }, (err) => console.warn("Res realtime sync warn:", err));
 
     // 4. Real-time Recoveries Listener
@@ -138,6 +141,7 @@ export default function DashboardPage() {
     const unsubRec = onSnapshot(qRec, (snap) => {
       const data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       setRecoveries(data);
+      setLoadedCount(prev => prev + 1);
     }, (err) => console.warn("Rec realtime sync warn:", err));
 
     return () => {
@@ -147,6 +151,14 @@ export default function DashboardPage() {
       unsubRec();
     };
   }, []);
+
+
+  // Set loading false only after ALL 4 data sources have loaded
+  useEffect(() => {
+    if (loadedCount >= 4) {
+      setLoading(false);
+    }
+  }, [loadedCount]);
 
   // Dynamic Calculations
   const activeInstallments = customers.filter((c) => c.status === "active").length;
