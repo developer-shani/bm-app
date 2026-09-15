@@ -196,7 +196,8 @@ export default function DashboardPage() {
             <Skeleton className="h-9 w-24 rounded-lg" />
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+          <SkeletonStatsCard />
           <SkeletonStatsCard />
           <SkeletonStatsCard />
           <SkeletonStatsCard />
@@ -248,12 +249,20 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <StatsCard
           title="Total Investment"
           value={formatCurrency(totalInvestment)}
           description="From all investors"
           icon={Wallet}
+          trend="up"
+          trendValue="Live"
+        />
+        <StatsCard
+          title="Total Investors"
+          value={investors.length.toString()}
+          description="Active capital partners"
+          icon={Handshake}
           trend="up"
           trendValue="Live"
         />
