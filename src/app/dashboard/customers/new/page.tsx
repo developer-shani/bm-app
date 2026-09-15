@@ -66,6 +66,7 @@ import {
   splitByRatio,
 } from "@/lib/calculations";
 import { toast } from "sonner";
+import { amountToUrduWords } from "@/lib/amount-words";
 
 const DEFAULT_COMPANIES = [
   "iPhone", "Samsung", "Vivo", "OPPO", "Realme", "Infinix",

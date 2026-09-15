@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Users,
   Wallet,
@@ -30,6 +31,23 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { Customer, Investor, Reseller } from "@/types";
 import { formatCurrency, formatDate, getInstallmentStatus, cn } from "@/lib/utils";
+
+function SkeletonStatsCard() {
+  return (
+    <Card className="hover:shadow-md transition-all duration-300">
+      <CardContent className="p-6">
+        <div className="flex items-start justify-between">
+          <div className="space-y-3 flex-1">
+            <Skeleton className="h-3.5 w-24" />
+            <Skeleton className="h-7 w-32" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+          <Skeleton className="w-11 h-11 rounded-xl" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function StatsCard({
   title,
@@ -151,6 +169,39 @@ export default function DashboardPage() {
       return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     })
     .reduce((sum, r) => sum + (r.amount || 0), 0);
+
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <Skeleton className="h-7 w-40 mb-2" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-9 w-28 rounded-lg" />
+            <Skeleton className="h-9 w-24 rounded-lg" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <SkeletonStatsCard />
+          <SkeletonStatsCard />
+          <SkeletonStatsCard />
+          <SkeletonStatsCard />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <Card><CardContent className="p-6 space-y-3"><Skeleton className="h-5 w-32" /><Skeleton className="h-8 w-20" /><Skeleton className="h-3 w-40" /></CardContent></Card>
+          <Card><CardContent className="p-6 space-y-3"><Skeleton className="h-5 w-32" /><Skeleton className="h-8 w-20" /><Skeleton className="h-3 w-40" /></CardContent></Card>
+          <Card><CardContent className="p-6 space-y-3"><Skeleton className="h-5 w-32" /><Skeleton className="h-8 w-20" /><Skeleton className="h-3 w-40" /></CardContent></Card>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card><CardHeader><Skeleton className="h-5 w-40" /></CardHeader><CardContent className="space-y-3">{[1,2,3].map(i => <div key={i} className="flex items-center gap-3 p-3 border rounded-lg"><Skeleton className="w-8 h-8 rounded-full" /><div className="flex-1 space-y-1.5"><Skeleton className="h-3.5 w-28" /><Skeleton className="h-3 w-40" /></div><Skeleton className="h-5 w-16 rounded-full" /></div>)}</CardContent></Card>
+          <Card><CardHeader><Skeleton className="h-5 w-40" /></CardHeader><CardContent className="space-y-3">{[1,2,3].map(i => <div key={i} className="flex items-center gap-3 p-3 border rounded-lg"><Skeleton className="w-8 h-8 rounded-full" /><div className="flex-1 space-y-1.5"><Skeleton className="h-3.5 w-28" /><Skeleton className="h-3 w-40" /></div><Skeleton className="h-5 w-16 rounded-full" /></div>)}</CardContent></Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">

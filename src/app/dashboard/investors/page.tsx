@@ -39,6 +39,7 @@ import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { collection, getDocs, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, addDoc } from "firebase/firestore";
 import { Investor } from "@/types";
 import { formatCurrency } from "@/lib/utils";
+import { amountToUrduWords } from "@/lib/amount-words";
 import { toast } from "sonner";
 
 export default function InvestorsPage() {
@@ -248,7 +249,21 @@ export default function InvestorsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredInvestors.map((investor) => {
             const isLowBalance = investor.availableBalance < 10000;
-            return (
+          
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex items-center justify-between">
+          <div><Skeleton className="h-7 w-48 mb-2" /><Skeleton className="h-4 w-64" /></div>
+          <Skeleton className="h-9 w-36 rounded-lg" />
+        </div>
+        <Skeleton className="h-10 w-full rounded-lg" />
+        <div className="grid gap-4">{[1,2,3,4].map(i => <Card key={i}><CardContent className="p-5"><div className="flex items-center gap-4"><Skeleton className="w-12 h-12 rounded-full" /><div className="flex-1 space-y-2"><Skeleton className="h-4 w-36" /><Skeleton className="h-3 w-52" /></div><Skeleton className="h-6 w-20 rounded-full" /></div></CardContent></Card>)}</div>
+      </div>
+    );
+  }
+
+  return (
               <Card
                 key={investor.id}
                 className="hover:shadow-lg transition-all duration-300 hover:border-primary/20 group"
@@ -379,6 +394,10 @@ export default function InvestorsPage() {
                 value={addAmount}
                 onChange={(e) => setAddAmount(e.target.value)}
               />
+            
+              {addAmount && parseFloat(addAmount) > 0 && (
+                <p className="text-xs text-primary font-medium mt-1">💰 {amountToUrduWords(addAmount)} Rupees</p>
+              )}
             </div>
 
             <div className="space-y-1.5">

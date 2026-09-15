@@ -33,6 +33,7 @@ import { collection, addDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
+import { amountToUrduWords } from "@/lib/amount-words";
 
 export default function AddInvestorPage() {
   const router = useRouter();
@@ -516,6 +517,10 @@ export default function AddInvestorPage() {
             <div className="space-y-2">
               <Label htmlFor="investmentAmount">Investment Amount (PKR) *</Label>
               <Input id="investmentAmount" type="number" placeholder="e.g. 500000" value={investmentAmount} onChange={(e) => setInvestmentAmount(e.target.value)} />
+            
+              {investmentAmount && parseFloat(investmentAmount) > 0 && (
+                <p className="text-xs text-primary font-medium mt-1">💰 {amountToUrduWords(investmentAmount)} Rupees</p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>Payment Proof (Image)</Label>

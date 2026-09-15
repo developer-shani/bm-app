@@ -63,6 +63,7 @@ import { Investor, Customer, Investment, Notification as NotifType, Recovery } f
 import { formatCurrency, formatDate, formatDateTime } from "@/lib/utils";
 import { calculateWithdrawalImpact } from "@/lib/calculations";
 import { toast } from "sonner";
+import { amountToUrduWords } from "@/lib/amount-words";
 
 export default function InvestorPortalPage() {
   const { appUser, signOut } = useAuth();
@@ -402,7 +403,11 @@ export default function InvestorPortalPage() {
                 <div className="space-y-2">
                   <Label>Amount (PKR)</Label>
                   <Input type="number" placeholder="e.g. 100000" value={investAmount} onChange={(e) => setInvestAmount(e.target.value)} />
-                </div>
+                
+              {investAmount && parseFloat(investAmount) > 0 && (
+                <p className="text-xs text-primary font-medium mt-1">💰 {amountToUrduWords(investAmount)} Rupees</p>
+              )}
+            </div>
                 <div className="space-y-2">
                   <Label>Payment Proof</Label>
                   <div className="border-2 border-dashed border-border/60 rounded-xl p-4 text-center">
@@ -443,7 +448,11 @@ export default function InvestorPortalPage() {
                 <div className="space-y-2">
                   <Label>Withdrawal Amount (PKR)</Label>
                   <Input type="number" placeholder="Amount" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} />
-                </div>
+                
+              {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
+                <p className="text-xs text-primary font-medium mt-1">💰 {amountToUrduWords(withdrawAmount)} Rupees</p>
+              )}
+            </div>
                 {withdrawalImpact && (
                   <div className={`rounded-lg p-4 text-sm space-y-2 ${withdrawalImpact.canWithdraw ? "bg-muted/50" : "bg-red-500/10"}`}>
                     <div className="flex justify-between">
@@ -472,6 +481,61 @@ export default function InvestorPortalPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+        </div>
+
+
+        {/* Profit & Expenses Summary */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className="border-green-500/20 bg-green-500/5">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-green-500" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Expected Total Profit</p>
+                  <p className="text-lg font-bold text-green-500">
+                    {formatCurrency(customers.reduce((sum, c) => sum + ((c.sellingPrice || 0) - (c.purchasePrice || c.investmentUsed || 0)), 0))}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">from {customers.length} sales</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-blue-500/20 bg-blue-500/5">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                  <CreditCard className="w-5 h-5 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Capital Deployed</p>
+                  <p className="text-lg font-bold text-blue-500">
+                    {formatCurrency(customers.reduce((sum, c) => sum + (c.purchasePrice || c.investmentUsed || 0), 0))}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">in active installments</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-amber-500/20 bg-amber-500/5">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+                  <Wallet className="w-5 h-5 text-amber-500" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Recovered</p>
+                  <p className="text-lg font-bold text-amber-500">
+                    {formatCurrency(recoveries.reduce((sum, r) => sum + (r.amount || 0), 0))}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">{recoveries.length} recoveries</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Customers on this investor's capital */}
