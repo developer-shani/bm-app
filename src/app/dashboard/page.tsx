@@ -283,7 +283,22 @@ export default function DashboardPage() {
 
       {/* Alert Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        <Card className="border-red-500/20 bg-red-500/5 hover:shadow-md transition-all">
+<Card className="border-green-500/20 bg-green-500/5 hover:shadow-md transition-all">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-green-500/15">
+                <IndianRupee className="w-5 h-5 text-green-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-green-500">This Month Collected</p>
+                <p className="text-2xl font-bold">{formatCurrency(thisMonthCollected)}</p>
+                <p className="text-xs text-muted-foreground">Real-time recovery total</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+<Card className="border-red-500/20 bg-red-500/5 hover:shadow-md transition-all">
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-red-500/15">
@@ -298,7 +313,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-yellow-500/20 bg-yellow-500/5 hover:shadow-md transition-all">
+<Card className="border-yellow-500/20 bg-yellow-500/5 hover:shadow-md transition-all">
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-yellow-500/15">
@@ -308,21 +323,6 @@ export default function DashboardPage() {
                 <p className="text-sm font-semibold text-yellow-500">Due Soon</p>
                 <p className="text-2xl font-bold">{dueSoonCount}</p>
                 <p className="text-xs text-muted-foreground">Within 3 days</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-green-500/20 bg-green-500/5 hover:shadow-md transition-all">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-green-500/15">
-                <IndianRupee className="w-5 h-5 text-green-500" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-green-500">This Month Collected</p>
-                <p className="text-2xl font-bold">{formatCurrency(thisMonthCollected)}</p>
-                <p className="text-xs text-muted-foreground">Real-time recovery total</p>
               </div>
             </div>
           </CardContent>
