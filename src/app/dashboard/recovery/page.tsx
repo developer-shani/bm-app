@@ -390,21 +390,6 @@ export default function RecoveryPage() {
                     const status = getInstallmentStatus(c.nextDueDate);
                     const daysOverdue = getDaysOverdue(c.nextDueDate);
                     const isSelected = selectedCustomer?.id === c.id;
-
-                  
-  if (loading) {
-    return (
-      <div className="space-y-6 animate-fade-in">
-        <div className="flex items-center justify-between">
-          <div><Skeleton className="h-7 w-48 mb-2" /><Skeleton className="h-4 w-64" /></div>
-          <Skeleton className="h-9 w-36 rounded-lg" />
-        </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">{[1,2,3,4].map(i => <Card key={i}><CardContent className="p-4 space-y-3"><Skeleton className="h-3 w-20" /><Skeleton className="h-6 w-28" /></CardContent></Card>)}</div>
-        <div className="grid gap-3">{[1,2,3,4].map(i => <Card key={i}><CardContent className="p-4"><div className="flex items-center gap-4"><Skeleton className="w-10 h-10 rounded-full" /><div className="flex-1 space-y-2"><Skeleton className="h-4 w-32" /><Skeleton className="h-3 w-48" /></div><Skeleton className="h-5 w-20 rounded-full" /></div></CardContent></Card>)}</div>
-      </div>
-    );
-  }
-
   return (
                       <div
                         key={c.id}
@@ -542,8 +527,7 @@ export default function RecoveryPage() {
                     <Label className="text-xs font-semibold">Payment Method</Label>
                     <div className="grid grid-cols-4 gap-1.5">
                       {["Cash", "Bank", "EasyPaisa", "JazzCash"].map((method) => (
-                        <Button
-                          key={method}
+                        <Button key={method}
                           type="button"
                           variant={paymentMethod === method ? "default" : "outline"}
                           size="sm"

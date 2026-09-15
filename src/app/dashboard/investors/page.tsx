@@ -215,7 +215,7 @@ export default function InvestorsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="animate-pulse">
-              <CardContent className="p-6 space-y-4">
+              <CardContent key={i} className="p-6 space-y-4">
                 <Skeleton className="h-6 w-32" />
                 <Skeleton className="h-4 w-48" />
                 <Skeleton className="h-8 w-full" />
@@ -249,20 +249,6 @@ export default function InvestorsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredInvestors.map((investor) => {
             const isLowBalance = investor.availableBalance < 10000;
-          
-  if (loading) {
-    return (
-      <div className="space-y-6 animate-fade-in">
-        <div className="flex items-center justify-between">
-          <div><Skeleton className="h-7 w-48 mb-2" /><Skeleton className="h-4 w-64" /></div>
-          <Skeleton className="h-9 w-36 rounded-lg" />
-        </div>
-        <Skeleton className="h-10 w-full rounded-lg" />
-        <div className="grid gap-4">{[1,2,3,4].map(i => <Card key={i}><CardContent className="p-5"><div className="flex items-center gap-4"><Skeleton className="w-12 h-12 rounded-full" /><div className="flex-1 space-y-2"><Skeleton className="h-4 w-36" /><Skeleton className="h-3 w-52" /></div><Skeleton className="h-6 w-20 rounded-full" /></div></CardContent></Card>)}</div>
-      </div>
-    );
-  }
-
   return (
               <Card
                 key={investor.id}
