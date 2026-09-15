@@ -316,17 +316,15 @@ export default function CustomersPage() {
                       <p className="text-[10px] text-muted-foreground">remaining</p>
                       {customer.status === "active" && (
                         <div className="flex gap-1 justify-end">
-                          <Link href="/dashboard/recovery">
-                            <Button
+                          <Button
                               variant="outline"
                               size="sm"
                               className="h-7 px-2 text-[11px] gap-1 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
-                              onClick={(e) => { e.stopPropagation(); }}
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = "/dashboard/recovery"; }}
                             >
                               <CreditCard className="w-3 h-3" />
                               Recovery
                             </Button>
-                          </Link>
                           <Button
                             variant="ghost"
                             size="sm"
