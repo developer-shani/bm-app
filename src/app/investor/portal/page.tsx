@@ -496,11 +496,18 @@ export default function InvestorPortalPage() {
                   <TrendingUp className="w-5 h-5 text-green-500" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Expected Total Profit</p>
-                  <p className="text-lg font-bold text-green-500">
-                    {formatCurrency(customers.reduce((sum, c) => sum + ((c.sellingPrice || 0) - (c.purchasePrice || c.investmentUsed || 0)), 0))}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">from {customers.length} sales</p>
+                  {(() => {
+                    const totalProfitAll = customers.reduce((sum, c) => sum + ((c.sellingPrice || 0) - (c.purchasePrice || c.investmentUsed || 0)), 0);
+                    const partnerProfitShare = Math.round(totalProfitAll * ((investor?.sharingRatio || 50) / 100));
+                    return (
+                      <div>
+                        <p className="text-xs text-muted-foreground">Expected Total Profit</p>
+                        <p className="text-lg font-bold text-green-500">{formatCurrency(totalProfitAll)}</p>
+                        <p className="text-[11px] font-semibold text-emerald-400 mt-0.5">Your Share ({investor?.sharingRatio || 50}%): {formatCurrency(partnerProfitShare)}</p>
+                        <p className="text-[10px] text-muted-foreground">from {customers.length} active sales</p>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </CardContent>
