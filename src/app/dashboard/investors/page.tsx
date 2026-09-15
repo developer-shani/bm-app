@@ -381,9 +381,7 @@ export default function InvestorsPage() {
                 onChange={(e) => setAddAmount(e.target.value)}
               />
             
-              {addAmount && parseFloat(addAmount) > 0 && (
-                <p className="text-xs text-primary font-medium mt-1">💰 {amountToUrduWords(addAmount)} Rupees</p>
-              )}
+
             </div>
 
             <div className="space-y-1.5">

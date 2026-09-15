@@ -413,9 +413,7 @@ export default function InvestorPortalPage() {
                   <Label>Amount (PKR)</Label>
                   <Input type="number" placeholder="e.g. 100000" value={investAmount} onChange={(e) => setInvestAmount(e.target.value)} />
                 
-              {investAmount && parseFloat(investAmount) > 0 && (
-                <p className="text-xs text-primary font-medium mt-1">💰 {amountToUrduWords(investAmount)} Rupees</p>
-              )}
+
             </div>
                 <div className="space-y-2">
                   <Label>Payment Proof</Label>
@@ -436,6 +434,12 @@ export default function InvestorPortalPage() {
                   </div>
                 </div>
               </div>
+              {investAmount && parseFloat(investAmount) > 0 && (
+                <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-between text-xs text-primary font-semibold">
+                  <span className="text-muted-foreground">Amount in Words:</span>
+                  <span className="font-bold">💰 {amountToUrduWords(investAmount)} Rupees</span>
+                </div>
+              )}
               <DialogFooter>
                 <Button onClick={handleAddInvestment} disabled={investLoading} className="gradient-primary gap-2">
                   {investLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />} Submit
@@ -458,9 +462,7 @@ export default function InvestorPortalPage() {
                   <Label>Withdrawal Amount (PKR)</Label>
                   <Input type="number" placeholder="Amount" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} />
                 
-              {withdrawAmount && parseFloat(withdrawAmount) > 0 && (
-                <p className="text-xs text-primary font-medium mt-1">💰 {amountToUrduWords(withdrawAmount)} Rupees</p>
-              )}
+
             </div>
                 {withdrawalImpact && (
                   <div className={`rounded-lg p-4 text-sm space-y-2 ${withdrawalImpact.canWithdraw ? "bg-muted/50" : "bg-red-500/10"}`}>
