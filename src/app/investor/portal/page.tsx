@@ -556,46 +556,6 @@ export default function InvestorPortalPage() {
           </Card>
         </div>
 
-        {/* Defaulted & Loss Cases 50/50 Section */}
-        {customers.some((cust) => cust.status === "defaulted") && (
-          <Card className="border-red-500/30 bg-red-500/5">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2 text-red-500">
-                <Ban className="w-4 h-4 text-red-500" />
-                Defaulted Cases & 50/50 Loss Share
-              </CardTitle>
-              <CardDescription>Aapke capital par defaulted sets aur aapka 50% loss share</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {customers.filter((cust) => cust.status === "defaulted").map((cust) => {
-                const shopLossShare = Math.round(cust.remainingAmount * 0.5);
-                const investorLossShare = cust.remainingAmount - shopLossShare;
-                return (
-                  <div key={cust.id} className="p-3.5 rounded-xl border border-red-500/20 bg-background/60 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-bold text-sm text-foreground">{cust.name} ({cust.phone1})</p>
-                        <p className="text-xs text-muted-foreground">{cust.mobileCompany} {cust.mobileModel}</p>
-                      </div>
-                      <Badge variant="destructive" className="text-[10px]">Defaulted</Badge>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t">
-                      <div className="bg-red-500/10 p-2 rounded-lg border border-red-500/20">
-                        <span className="text-muted-foreground block text-[10px]">Total Case Loss:</span>
-                        <span className="font-bold text-red-500">{formatCurrency(cust.remainingAmount)}</span>
-                      </div>
-                      <div className="bg-purple-500/10 p-2 rounded-lg border border-purple-500/20">
-                        <span className="text-muted-foreground block text-[10px]">Your 50% Loss Share:</span>
-                        <span className="font-bold text-purple-400">{formatCurrency(investorLossShare)}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
-        )}
-
         {/* Withdrawal Requests & History Card */}
         <Card>
           <CardHeader className="pb-3">
@@ -659,6 +619,115 @@ export default function InvestorPortalPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Defaulted & 50/50 Loss Sharing Section */}
+        {customers.some((cust) => cust.status === "defaulted") && (() => {
+          const defaultedCusts = customers.filter((cust) => cust.status === "defaulted");
+          const totalDefaultedLoss = defaultedCusts.reduce((sum, c) => sum + (c.remainingAmount || 0), 0);
+          const totalShopLoss = Math.round(totalDefaultedLoss * 0.5);
+          const totalInvestorLoss = totalDefaultedLoss - totalShopLoss;
+
+          return (
+            <Card className="border-red-500/40 bg-red-500/5 shadow-md">
+              <CardHeader className="pb-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2 text-red-500 font-bold">
+                      <Ban className="w-5 h-5 text-red-500" />
+                      Loss Management & 50/50 Loss Share
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Aapke capital par defaulted sets aur 50/50 loss sharing ka hisaab
+                    </CardDescription>
+                  </div>
+                  <Badge variant="destructive" className="self-start sm:self-auto text-xs px-2.5 py-1">
+                    {defaultedCusts.length} Defaulted Case{defaultedCusts.length > 1 ? "s" : ""}
+                  </Badge>
+                </div>
+
+                {/* Top Summary Badges */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-3">
+                  <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/20 text-center">
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Total Defaulted Loss</span>
+                    <span className="font-bold text-red-500 text-sm">{formatCurrency(totalDefaultedLoss)}</span>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center">
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Shop Share (50%)</span>
+                    <span className="font-bold text-amber-500 text-sm">{formatCurrency(totalShopLoss)}</span>
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-center">
+                    <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Your Share (50%)</span>
+                    <span className="font-bold text-purple-400 text-sm">{formatCurrency(totalInvestorLoss)}</span>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="space-y-3">
+                {defaultedCusts.map((cust) => {
+                  const shopLossShare = Math.round(cust.remainingAmount * 0.5);
+                  const investorLossShare = cust.remainingAmount - shopLossShare;
+
+                  return (
+                    <div key={cust.id} className="p-4 rounded-xl border border-red-500/30 bg-background/80 hover:border-red-500/50 transition-all space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-bold text-sm text-foreground">{cust.name}</p>
+                            <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-mono">{cust.idNumber}</span>
+                            <Badge variant="destructive" className="text-[10px]">Defaulted</Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                            <span>📞 {cust.phone1}</span>
+                            {cust.phone2 && <span>• {cust.phone2}</span>}
+                          </p>
+                        </div>
+                        <div className="text-left sm:text-right">
+                          <span className="text-[11px] text-muted-foreground block">Total Case Loss</span>
+                          <span className="text-base font-extrabold text-red-500">{formatCurrency(cust.remainingAmount)}</span>
+                        </div>
+                      </div>
+
+                      {/* Mobile Details & Reason */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs p-2.5 rounded-lg bg-red-500/5 border border-red-500/10">
+                        <div>
+                          <p className="font-medium text-foreground flex items-center gap-1">
+                            <Smartphone className="w-3.5 h-3.5 text-red-400" />
+                            {cust.mobileCompany} {cust.mobileModel}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                            IMEI 1: {cust.imei1 || "N/A"} {cust.imei2 ? `| IMEI 2: ${cust.imei2}` : ""}
+                          </p>
+                        </div>
+                        <div className="md:text-right space-y-0.5">
+                          <p className="text-[11px] text-muted-foreground">
+                            Sale Date: <span className="text-foreground">{formatDate(cust.createdAt)}</span>
+                          </p>
+                          {cust.lossReason && (
+                            <p className="text-[11px] text-red-400 font-medium italic">
+                              Reason: {cust.lossReason}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* 50/50 Share Badges */}
+                      <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-border/40">
+                        <div className="bg-amber-500/10 p-2.5 rounded-lg border border-amber-500/20 text-center">
+                          <span className="text-muted-foreground block text-[10px]">Shop Share (50%):</span>
+                          <span className="font-bold text-amber-500">{formatCurrency(shopLossShare)}</span>
+                        </div>
+                        <div className="bg-purple-500/10 p-2.5 rounded-lg border border-purple-500/20 text-center">
+                          <span className="text-muted-foreground block text-[10px]">Your Loss Share (50%):</span>
+                          <span className="font-bold text-purple-400">{formatCurrency(investorLossShare)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          );
+        })()}
 
         {/* Customers on this investor's capital */}
         <Card>
