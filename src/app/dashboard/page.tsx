@@ -250,20 +250,6 @@ export default function DashboardPage() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatsCard
-          title="Total Customers"
-          value={customers.length.toString()}
-          description="All time customers"
-          icon={Users}
-          trend="up"
-          trendValue="Live"
-        />
-        <StatsCard
-          title="Active Installments"
-          value={activeInstallments.toString()}
-          description="Currently running"
-          icon={CreditCard}
-        />
-        <StatsCard
           title="Total Investment"
           value={formatCurrency(totalInvestment)}
           description="From all investors"
@@ -278,6 +264,20 @@ export default function DashboardPage() {
           icon={TrendingUp}
           trend="up"
           trendValue="Live"
+        />
+        <StatsCard
+          title="Total Customers"
+          value={customers.length.toString()}
+          description="All time customers"
+          icon={Users}
+          trend="up"
+          trendValue="Live"
+        />
+        <StatsCard
+          title="Active Installments"
+          value={activeInstallments.toString()}
+          description="Currently running"
+          icon={CreditCard}
         />
       </div>
 
