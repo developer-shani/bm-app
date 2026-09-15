@@ -51,6 +51,7 @@ import {
   UserCheck,
   BadgePercent,
   Clock,
+  Receipt,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
@@ -788,6 +789,23 @@ export default function InvestorPortalPage() {
                         </div>
                       </div>
 
+                      {/* Sale Expenses Sub-card if expenses exist */}
+                      {c.expenses && c.expenses.length > 0 && (
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-muted-foreground">
+                          <div className="flex items-center gap-1.5 text-amber-500 font-medium">
+                            <Receipt className="w-3.5 h-3.5" />
+                            <span>Sale Expenses ({c.expenses.length}):</span>
+                            <span className="text-foreground">{c.expenses.map((e) => e.description).join(", ")}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[11px] text-muted-foreground">Your Share: </span>
+                            <span className="font-semibold text-amber-500">
+                              {formatCurrency(c.expenses.reduce((s, e) => s + (e.investorShare ?? Math.round((e.amount || 0) * 0.5)), 0))}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Mobile & Referral Sub-card */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs p-2.5 rounded-lg bg-muted/40 border border-border/30">
                         <div className="space-y-1">
@@ -1033,6 +1051,52 @@ export default function InvestorPortalPage() {
                       )}
                     </div>
                   </div>
+                </div>
+
+                {/* Sale Expenses & Deductions Section */}
+                <div className="p-4 rounded-xl bg-muted/30 border border-border/40 space-y-3">
+                  <h4 className="text-xs font-semibold text-primary uppercase tracking-wider flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Receipt className="w-4 h-4" /> Sale Expenses & Capital Deductions
+                    </span>
+                    {selectedCustomerDetail.expenses && selectedCustomerDetail.expenses.length > 0 && (
+                      <Badge variant="outline" className="text-[10px]">
+                        Total: {formatCurrency(selectedCustomerDetail.expenses.reduce((s, e) => s + (e.amount || 0), 0))}
+                      </Badge>
+                    )}
+                  </h4>
+
+                  {selectedCustomerDetail.expenses && selectedCustomerDetail.expenses.length > 0 ? (
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {selectedCustomerDetail.expenses.map((exp, idx) => {
+                          const invShare = exp.investorShare ?? Math.round((exp.amount || 0) * 0.5);
+                          const shopShare = exp.adminShare ?? Math.round((exp.amount || 0) * 0.5);
+                          return (
+                            <div key={exp.id || idx} className="p-2.5 rounded-lg bg-background/60 border border-border/30 space-y-1 text-xs">
+                              <div className="flex justify-between font-semibold">
+                                <span className="text-foreground">{exp.description || "Expense"}</span>
+                                <span className="text-amber-500">{formatCurrency(exp.amount || 0)}</span>
+                              </div>
+                              <div className="flex justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/20">
+                                <span>Your Share (50%): <strong className="text-primary">{formatCurrency(invShare)}</strong></span>
+                                <span>Shop Share: <strong>{formatCurrency(shopShare)}</strong></span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <div className="p-2.5 rounded-lg bg-primary/10 border border-primary/20 flex justify-between items-center text-xs">
+                        <span className="font-medium text-foreground">Total Deducted from Your Capital:</span>
+                        <span className="font-bold text-primary text-sm">
+                          {formatCurrency(selectedCustomerDetail.expenses.reduce((s, e) => s + (e.investorShare ?? Math.round((e.amount || 0) * 0.5)), 0))}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground text-center py-2">No additional expenses added for this sale</p>
+                  )}
                 </div>
 
                 {/* Customer & Referral Details */}
