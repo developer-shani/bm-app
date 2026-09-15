@@ -46,6 +46,11 @@ import {
   PieChart,
   UserCog,
   User,
+  Eye,
+  Fingerprint,
+  UserCheck,
+  BadgePercent,
+  Clock,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
@@ -101,6 +106,7 @@ export default function InvestorPortalPage() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [withdrawalsList, setWithdrawalsList] = useState<any[]>([]);
   const [selectedProof, setSelectedProof] = useState<{ image: string; title: string; ref?: string; note?: string } | null>(null);
+  const [selectedCustomerDetail, setSelectedCustomerDetail] = useState<Customer | null>(null);
 
   useEffect(() => {
     if (!appUser) {
@@ -668,28 +674,99 @@ export default function InvestorPortalPage() {
                 <p className="text-sm text-muted-foreground">Abhi koi customer nahi hai</p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {customers.map((c) => {
                   const progress = c.sellingPrice > 0 ? Math.round((c.totalPaid / c.sellingPrice) * 100) : 0;
                   return (
-                    <div key={c.id} className="p-4 rounded-xl border border-border/50 hover:border-primary/20 transition-all">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <p className="font-semibold text-sm">{c.name}</p>
-                          <p className="text-xs text-muted-foreground">{c.mobileCompany} {c.mobileModel}</p>
+                    <div key={c.id} className="p-4 rounded-xl border border-border/50 bg-card/60 hover:border-primary/40 transition-all space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        {/* Customer Info */}
+                        <div className="flex items-center gap-3">
+                          {c.image ? (
+                            <img src={c.image} alt={c.name} className="w-11 h-11 rounded-full object-cover border border-border/60 shadow-sm" />
+                          ) : (
+                            <div className="w-11 h-11 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center text-primary font-bold text-sm shadow-sm">
+                              {c.name.charAt(0).toUpperCase()}
+                            </div>
+                          )}
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <p className="font-semibold text-sm text-foreground">{c.name}</p>
+                              <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded text-muted-foreground font-mono">{c.idNumber}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                              <span>📞 {c.phone1}</span>
+                              {c.phone2 && <span className="opacity-70">• {c.phone2}</span>}
+                            </p>
+                          </div>
                         </div>
-                        <div className="text-right">
-                          <Badge variant={c.status === "completed" ? "success" : "outline"} className="text-[10px]">
-                            {c.status === "completed" ? "Completed" : `${c.paidInstallments}/${c.installmentMonths} months`}
+
+                        {/* Status & Detail Trigger */}
+                        <div className="flex items-center gap-2 sm:self-start">
+                          <Badge variant={c.status === "completed" ? "success" : c.status === "defaulted" ? "destructive" : "outline"} className="text-[10px] capitalize">
+                            {c.status === "completed" ? "Completed" : c.status === "defaulted" ? "Defaulted" : `${c.paidInstallments}/${c.installmentMonths} months`}
                           </Badge>
-                          <p className="text-xs text-muted-foreground mt-1">{formatCurrency(c.remainingAmount)} left</p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 gap-1 text-xs border-primary/30 hover:bg-primary/10 hover:text-primary"
+                            onClick={() => setSelectedCustomerDetail(c)}
+                          >
+                            <Eye className="w-3.5 h-3.5" /> Full Details
+                          </Button>
                         </div>
                       </div>
-                      <Progress value={progress} className="h-1.5" />
-                      <div className="flex justify-between mt-2 text-[10px] text-muted-foreground">
-                        <span>Invested: {formatCurrency(c.investmentUsed)}</span>
-                        <span>Paid: {formatCurrency(c.totalPaid)}</span>
-                        <span>Total: {formatCurrency(c.sellingPrice)}</span>
+
+                      {/* Mobile & Referral Sub-card */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs p-2.5 rounded-lg bg-muted/40 border border-border/30">
+                        <div className="space-y-1">
+                          <p className="font-medium text-foreground flex items-center gap-1">
+                            <Smartphone className="w-3.5 h-3.5 text-primary" />
+                            {c.mobileCompany} {c.mobileModel}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground font-mono">
+                            IMEI 1: <span className="text-foreground">{c.imei1 || "N/A"}</span>
+                            {c.imei2 ? <span> | IMEI 2: <span className="text-foreground">{c.imei2}</span></span> : null}
+                          </p>
+                        </div>
+                        <div className="space-y-1 md:text-right">
+                          <p className="text-[11px] text-muted-foreground">
+                            Referred By: <span className="font-medium text-foreground">{c.resellerName || "Direct / Shop"}</span>
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            Sale Date: <span className="text-foreground">{formatDate(c.createdAt)}</span>
+                            {c.nextDueDate && c.status === "active" ? (
+                              <span className="ml-2 text-amber-500 font-medium">Next Due: {formatDate(c.nextDueDate)}</span>
+                            ) : null}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Progress Bar & Financial Breakdown */}
+                      <div>
+                        <div className="flex justify-between items-center text-[11px] text-muted-foreground mb-1">
+                          <span>Progress ({progress}%)</span>
+                          <span className="font-semibold text-foreground">{formatCurrency(c.remainingAmount)} left</span>
+                        </div>
+                        <Progress value={progress} className="h-1.5" />
+                        <div className="grid grid-cols-4 gap-1 mt-2 text-[10px] text-muted-foreground text-center bg-background/40 p-1.5 rounded-md border border-border/20">
+                          <div>
+                            <span className="block text-[9px] text-muted-foreground">Invested</span>
+                            <span className="font-semibold text-foreground">{formatCurrency(c.investmentUsed)}</span>
+                          </div>
+                          <div>
+                            <span className="block text-[9px] text-muted-foreground">Advance</span>
+                            <span className="font-semibold text-foreground">{formatCurrency(c.advancePayment)}</span>
+                          </div>
+                          <div>
+                            <span className="block text-[9px] text-muted-foreground">Paid</span>
+                            <span className="font-semibold text-green-500">{formatCurrency(c.totalPaid)}</span>
+                          </div>
+                          <div>
+                            <span className="block text-[9px] text-muted-foreground">Total Price</span>
+                            <span className="font-semibold text-foreground">{formatCurrency(c.sellingPrice)}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
@@ -821,6 +898,151 @@ export default function InvestorPortalPage() {
           <DialogFooter>
             <Button onClick={() => setShowGuide(false)} className="w-full gradient-primary">Samajh Gaya - Let&apos;s Go!</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Full Customer Details Dialog Modal */}
+      <Dialog open={!!selectedCustomerDetail} onOpenChange={(open) => !open && setSelectedCustomerDetail(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto border-border/50 bg-background/95 backdrop-blur-xl">
+          {selectedCustomerDetail && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-3">
+                  {selectedCustomerDetail.image ? (
+                    <img src={selectedCustomerDetail.image} alt={selectedCustomerDetail.name} className="w-14 h-14 rounded-full object-cover border-2 border-primary/30 shadow-md" />
+                  ) : (
+                    <div className="w-14 h-14 rounded-full bg-primary/20 border-2 border-primary/40 flex items-center justify-center text-primary font-bold text-xl shadow-md">
+                      {selectedCustomerDetail.name.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                  <div>
+                    <DialogTitle className="text-xl flex items-center gap-2">
+                      {selectedCustomerDetail.name}
+                      <Badge variant={selectedCustomerDetail.status === "completed" ? "success" : selectedCustomerDetail.status === "defaulted" ? "destructive" : "outline"} className="text-xs">
+                        {selectedCustomerDetail.status === "completed" ? "Completed" : selectedCustomerDetail.status === "defaulted" ? "Defaulted" : "Active"}
+                      </Badge>
+                    </DialogTitle>
+                    <DialogDescription className="text-xs mt-0.5 flex items-center gap-2">
+                      <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-foreground">{selectedCustomerDetail.idNumber}</span>
+                      <span>• Phone: {selectedCustomerDetail.phone1}</span>
+                    </DialogDescription>
+                  </div>
+                </div>
+              </DialogHeader>
+
+              <div className="space-y-4 py-2">
+                {/* Mobile & Device Information */}
+                <div className="p-4 rounded-xl bg-muted/30 border border-border/40 space-y-3">
+                  <h4 className="text-xs font-semibold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                    <Smartphone className="w-4 h-4" /> Device & Mobile Details
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                    <div>
+                      <span className="text-muted-foreground block text-[11px]">Brand / Company</span>
+                      <span className="font-medium text-foreground">{selectedCustomerDetail.mobileCompany}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[11px]">Model Name</span>
+                      <span className="font-medium text-foreground">{selectedCustomerDetail.mobileModel}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[11px]">Sale Date</span>
+                      <span className="font-medium text-foreground">{formatDate(selectedCustomerDetail.createdAt)}</span>
+                    </div>
+                    <div className="col-span-2 sm:col-span-3 bg-background/60 p-2.5 rounded-lg border border-border/30 space-y-1 font-mono text-[11px]">
+                      <p className="flex justify-between">
+                        <span className="text-muted-foreground">IMEI Number 1:</span>
+                        <span className="font-semibold text-primary">{selectedCustomerDetail.imei1 || "N/A"}</span>
+                      </p>
+                      {selectedCustomerDetail.imei2 && (
+                        <p className="flex justify-between">
+                          <span className="text-muted-foreground">IMEI Number 2:</span>
+                          <span className="font-semibold text-primary">{selectedCustomerDetail.imei2}</span>
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Customer & Referral Details */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3.5 rounded-xl bg-muted/30 border border-border/40 space-y-2">
+                    <h4 className="text-xs font-semibold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                      <UserCheck className="w-3.5 h-3.5" /> Customer Contacts
+                    </h4>
+                    <div className="space-y-1 text-xs">
+                      <p><span className="text-muted-foreground">Primary Phone:</span> <span className="font-medium text-foreground">{selectedCustomerDetail.phone1}</span></p>
+                      {selectedCustomerDetail.phone2 && (
+                        <p><span className="text-muted-foreground">Secondary Phone:</span> <span className="font-medium text-foreground">{selectedCustomerDetail.phone2}</span></p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-muted/30 border border-border/40 space-y-2">
+                    <h4 className="text-xs font-semibold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                      <BadgePercent className="w-3.5 h-3.5" /> Referral Details
+                    </h4>
+                    <div className="space-y-1 text-xs">
+                      <p><span className="text-muted-foreground">Referred By:</span> <span className="font-medium text-foreground">{selectedCustomerDetail.resellerName || "Direct / Shop"}</span></p>
+                      {selectedCustomerDetail.referralCommissionAmount ? (
+                        <p><span className="text-muted-foreground">Commission:</span> <span className="font-medium text-green-500">{formatCurrency(selectedCustomerDetail.referralCommissionAmount)} ({selectedCustomerDetail.referralCommissionPercent}%)</span></p>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Financial Breakdown */}
+                <div className="p-4 rounded-xl bg-muted/30 border border-border/40 space-y-3">
+                  <h4 className="text-xs font-semibold text-primary uppercase tracking-wider flex items-center gap-1.5">
+                    <DollarSign className="w-4 h-4" /> Financial Summary
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="p-2.5 rounded-lg bg-background/50 border border-border/20">
+                      <span className="text-[11px] text-muted-foreground block">Capital Invested</span>
+                      <span className="font-semibold text-blue-500">{formatCurrency(selectedCustomerDetail.investmentUsed)}</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-background/50 border border-border/20">
+                      <span className="text-[11px] text-muted-foreground block">Advance Payment</span>
+                      <span className="font-semibold text-foreground">{formatCurrency(selectedCustomerDetail.advancePayment)}</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-background/50 border border-border/20">
+                      <span className="text-[11px] text-muted-foreground block">Monthly Installment</span>
+                      <span className="font-semibold text-foreground">{formatCurrency(selectedCustomerDetail.monthlyInstallment)} / mo</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-background/50 border border-border/20">
+                      <span className="text-[11px] text-muted-foreground block">Total Selling Price</span>
+                      <span className="font-semibold text-foreground">{formatCurrency(selectedCustomerDetail.sellingPrice)}</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-background/50 border border-border/20">
+                      <span className="text-[11px] text-muted-foreground block">Total Paid So Far</span>
+                      <span className="font-semibold text-green-500">{formatCurrency(selectedCustomerDetail.totalPaid)}</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-background/50 border border-border/20">
+                      <span className="text-[11px] text-muted-foreground block">Remaining Balance</span>
+                      <span className="font-semibold text-amber-500">{formatCurrency(selectedCustomerDetail.remainingAmount)}</span>
+                    </div>
+                  </div>
+
+                  {/* Installment Plan Status */}
+                  <div className="pt-2 border-t border-border/30 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      <span>Installments: <strong className="text-foreground">{selectedCustomerDetail.paidInstallments} of {selectedCustomerDetail.installmentMonths}</strong> months paid</span>
+                    </div>
+                    {selectedCustomerDetail.nextDueDate && selectedCustomerDetail.status === "active" && (
+                      <div className="text-amber-500 font-medium">
+                        Next Due: {formatDate(selectedCustomerDetail.nextDueDate)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setSelectedCustomerDetail(null)}>Close</Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
       {/* Payment Proof Viewer Dialog */}
